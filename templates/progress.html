@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Progress - Technical Interview Platform{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-8 px-4">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-4xl md:text-5xl font-bold mb-6 text-gray-800 dark-mode:text-gray-200">
+            Progress Overview
+        </h1>
+        <p class="text-lg text-gray-600 dark-mode:text-gray-400 mb-8">Hello, {{ user_name }}.</p>
+
+        {% if not has_data %}
+            <div class="card-light dark-mode:card-dark p-12 rounded-2xl shadow-lg text-center">
+                <div class="text-6xl mb-4">📉</div>
+                <h3 class="text-xl font-semibold mb-2 text-gray-800 dark-mode:text-gray-200">
+                    You have no interview history yet
+                </h3>
+                <p class="text-gray-600 dark-mode:text-gray-400 mb-6">
+                    Complete some interviews to see your progress over time.
+                </p>
+                <a href="{{ url_for('interview') }}" class="btn-primary text-white font-semibold py-3 px-6 rounded-[1.3rem] hover:shadow-lg transition-shadow inline-block" aria-label="Start an interview">
+                    Start Interview
+                </a>
+            </div>
+        {% else %}
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-700 dark-mode:text-gray-300">Total Interviews</h3>
+                    <p class="text-4xl font-bold text-gray-800 dark-mode:text-gray-200">{{ total_interviews }}</p>
+                </div>
+                <div class="card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-700 dark-mode:text-gray-300">Average Accuracy</h3>
+                    <p class="text-4xl font-bold text-gray-800 dark-mode:text-gray-200">{{ avg_accuracy }}%</p>
+                </div>
+                <div class="card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-700 dark-mode:text-gray-300">Estimated Time Spent</h3>
+                    <p class="text-4xl font-bold text-gray-800 dark-mode:text-gray-200">{{ est_total_minutes }}m</p>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg lg:col-span-2">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-700 dark-mode:text-gray-300">Progress Over Time</h3>
+                    <canvas id="progressLine"></canvas>
+                </div>
+                <div class="card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-700 dark-mode:text-gray-300">Attempts by Domain</h3>
+                    <canvas id="domainPie"></canvas>
+                    {% if most_attempted_domain %}
+                    <p class="text-sm mt-3 text-gray-600 dark-mode:text-gray-400">Most attempted: <strong>{{ most_attempted_domain }}</strong></p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Domain Performance Table -->
+            <div class="card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg">
+                <h3 class="text-lg font-semibold mb-4 text-gray-700 dark-mode:text-gray-300">Domain Performance</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left text-sm">
+                        <thead>
+                            <tr class="text-gray-700 dark-mode:text-gray-300">
+                                <th class="py-2 pr-4">Domain</th>
+                                <th class="py-2 pr-4">Avg Accuracy</th>
+                                <th class="py-2 pr-4">Recommendation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for domain, acc in domain_avg_accuracy.items() %}
+                            <tr class="border-t border-gray-200 dark-mode:border-gray-700 text-gray-800 dark-mode:text-gray-200">
+                                <td class="py-2 pr-4">{{ domain }}</td>
+                                <td class="py-2 pr-4">{{ acc }}%</td>
+                                <td class="py-2 pr-4">
+                                    {% if acc >= 85 %}
+                                        Strong proficiency. Keep practicing advanced problems.
+                                    {% elif acc >= 70 %}
+                                        Good foundation. Focus on edge cases and optimizations.
+                                    {% else %}
+                                        Needs improvement. Revisit fundamentals and practice more problems.
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function(){
+    {% if has_data %}
+    const labels = {{ labels|tojson }};
+    const completed = {{ completed_series|tojson }};
+    const accuracy = {{ accuracy_series|tojson }};
+    const domainCounts = {{ domain_counts|tojson }};
+
+    const lineCtx = document.getElementById('progressLine').getContext('2d');
+    new Chart(lineCtx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Completed Interviews',
+                    data: completed,
+                    borderColor: 'hsl(203.89, 88.28%, 53.14%)',
+                    backgroundColor: 'hsla(203.89, 88.28%, 53.14%, 0.2)',
+                    tension: 0.3,
+                    yAxisID: 'y1'
+                },
+                {
+                    label: 'Average Accuracy %',
+                    data: accuracy,
+                    borderColor: 'hsl(210, 25%, 7.84%)',
+                    backgroundColor: 'hsla(210, 25%, 7.84%, 0.15)',
+                    tension: 0.3,
+                    yAxisID: 'y2'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            stacked: false,
+            scales: {
+                y1: { type: 'linear', position: 'left', beginAtZero: true },
+                y2: { type: 'linear', position: 'right', beginAtZero: true, suggestedMax: 100, grid: { drawOnChartArea: false } }
+            }
+        }
+    });
+
+    const pieCtx = document.getElementById('domainPie').getContext('2d');
+    const pieLabels = Object.keys(domainCounts);
+    const pieData = Object.values(domainCounts);
+    new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+            labels: pieLabels,
+            datasets: [{
+                data: pieData,
+                backgroundColor: ['#3b82f6','#f59e0b','#10b981','#6b7280'],
+            }]
+        },
+        options: { responsive: true }
+    });
+    {% endif %}
+})();
+</script>
+{% endblock %}
+

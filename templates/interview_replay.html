@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Interview Replay - Technical Interview Platform{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-8 px-4">
+    <div class="max-w-4xl mx-auto">
+        <div class="mb-6">
+            <a href="{{ url_for('interview_history') }}" class="text-gray-600 dark-mode:text-gray-400 hover:text-gray-800 dark-mode:hover:text-gray-200 underline text-sm mb-4 inline-block">
+                ← Back to History
+            </a>
+            <h1 class="text-4xl md:text-5xl font-bold mb-2 text-gray-800 dark-mode:text-gray-200">
+                Interview Replay
+            </h1>
+            <p class="text-lg text-gray-600 dark-mode:text-gray-400">
+                {{ session.domain }} | {{ session.started_at.strftime('%B %d, %Y at %I:%M %p') if session.started_at else 'Date not available' }}
+            </p>
+        </div>
+
+        {% if video %}
+        <!-- Video Player -->
+        <div class="card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg mb-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark-mode:text-gray-200">Recorded Interview Video</h2>
+            <video 
+                controls 
+                class="w-full rounded-lg bg-gray-900" 
+                style="max-height: 500px;"
+                preload="metadata">
+                <source src="{{ url_for('get_video', video_id=video.id) }}" type="video/webm">
+                Your browser does not support the video tag.
+            </video>
+            <div class="mt-4 text-sm text-gray-600 dark-mode:text-gray-400">
+                {% if video.duration %}
+                <p>Duration: {{ "%.1f"|format(video.duration) }} seconds</p>
+                {% endif %}
+                {% if video.file_size %}
+                <p>File size: {{ "%.2f"|format(video.file_size / 1024 / 1024) }} MB</p>
+                {% endif %}
+            </div>
+            {% if emotion_analysis %}
+            <!-- DeepFace Emotion Analysis -->
+            <div class="mt-4 pt-4 border-t border-gray-200 dark-mode:border-gray-700">
+                <h3 class="text-lg font-semibold mb-3 text-gray-800 dark-mode:text-gray-200">Emotion Analysis</h3>
+                
+                <!-- Engagement Score -->
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600 dark-mode:text-gray-400 mb-1">Engagement Score</p>
+                    <p class="text-3xl font-bold {% if emotion_analysis.engagement_score >= 70 %}text-green-600 dark-mode:text-green-400{% elif emotion_analysis.engagement_score >= 50 %}text-blue-600 dark-mode:text-blue-400{% else %}text-red-600 dark-mode:text-red-400{% endif %}">
+                        {{ "%.1f"|format(emotion_analysis.engagement_score) }}/100
+                    </p>
+                </div>
+                
+                <!-- Dominant Emotion -->
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600 dark-mode:text-gray-400 mb-1">Dominant Emotion</p>
+                    <p class="text-xl font-semibold text-gray-800 dark-mode:text-gray-200 capitalize">
+                        {{ emotion_analysis.dominant_emotion }}
+                    </p>
+                </div>
+                
+                <!-- Emotion Distribution Chart -->
+                <div class="mb-4">
+                    <p class="text-sm font-semibold text-gray-700 dark-mode:text-gray-300 mb-2">Emotion Distribution</p>
+                    <div class="space-y-2">
+                        {% set emotions = [
+                            ('happy', emotion_analysis.happy, '😄', '#10b981'),
+                            ('neutral', emotion_analysis.neutral, '😐', '#6b7280'),
+                            ('surprise', emotion_analysis.surprise, '😲', '#eab308'),
+                            ('sad', emotion_analysis.sad, '😞', '#3b82f6'),
+                            ('angry', emotion_analysis.angry, '😠', '#ef4444'),
+                            ('fear', emotion_analysis.fear, '😨', '#a855f7'),
+                            ('disgust', emotion_analysis.disgust, '😖', '#f97316')
+                        ] %}
+                        {% for emotion, value, emoji, color_hex in emotions %}
+                        <div class="flex items-center gap-3">
+                            <span class="text-lg">{{ emoji }}</span>
+                            <span class="text-sm text-gray-600 dark-mode:text-gray-400 capitalize w-20">{{ emotion }}</span>
+                            <div class="flex-1 bg-gray-200 dark-mode:bg-gray-700 rounded-full h-4 relative overflow-hidden">
+                                <div class="h-full rounded-full transition-all duration-500" style="width: {{ value }}%; background-color: {{ color_hex }};"></div>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-800 dark-mode:text-gray-200 w-12 text-right">{{ "%.1f"|format(value) }}%</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Analysis Stats -->
+                <div class="mt-4 pt-4 border-t border-gray-200 dark-mode:border-gray-700 text-sm text-gray-600 dark-mode:text-gray-400">
+                    <p>Frames Analyzed: {{ emotion_analysis.frames_analyzed }}</p>
+                    <p>Faces Detected: {{ emotion_analysis.faces_detected }}</p>
+                </div>
+            </div>
+            {% elif video.emotion_analysis %}
+            <!-- Legacy Video Analysis (OpenCV only) -->
+            <div class="mt-4 pt-4 border-t border-gray-200 dark-mode:border-gray-700">
+                <h3 class="text-lg font-semibold mb-3 text-gray-800 dark-mode:text-gray-200">Video Analysis</h3>
+                {% set analysis = video.emotion_analysis|from_json %}
+                {% if analysis.engagement_score %}
+                <div class="mb-3">
+                    <p class="text-sm text-gray-600 dark-mode:text-gray-400 mb-1">Engagement Score</p>
+                    <p class="text-2xl font-bold text-blue-600 dark-mode:text-blue-400">
+                        {{ "%.1f"|format(analysis.engagement_score) }}/10
+                    </p>
+                </div>
+                {% endif %}
+                {% if analysis.feedback %}
+                <div class="space-y-2">
+                    <p class="text-sm font-semibold text-gray-700 dark-mode:text-gray-300">Feedback:</p>
+                    <ul class="list-disc pl-6 space-y-1">
+                        {% for item in analysis.feedback %}
+                        <li class="text-sm text-gray-600 dark-mode:text-gray-400">{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+            {% elif video.engagement_score %}
+            <div class="mt-4 pt-4 border-t border-gray-200 dark-mode:border-gray-700">
+                <h3 class="text-lg font-semibold mb-2 text-gray-800 dark-mode:text-gray-200">Engagement Score</h3>
+                <p class="text-2xl font-bold text-blue-600 dark-mode:text-blue-400">
+                    {{ "%.1f"|format(video.engagement_score) }}/10
+                </p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if not attempts %}
+            <div class="card-light dark-mode:card-dark p-8 rounded-2xl shadow-lg text-center">
+                <p class="text-gray-600 dark-mode:text-gray-400">No questions were recorded for this session.</p>
+            </div>
+        {% else %}
+            <div class="space-y-6">
+                {% for attempt in attempts %}
+                <div class="card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg">
+                    <div class="flex items-start justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800 dark-mode:text-gray-200">
+                            Question {{ loop.index }}
+                        </h3>
+                        {% if attempt.is_correct is not None %}
+                        <span class="px-3 py-1 rounded-full text-sm font-semibold {% if attempt.is_correct %}bg-green-100 text-green-800 dark-mode:bg-green-900 dark-mode:text-green-200{% else %}bg-red-100 text-red-800 dark-mode:bg-red-900 dark-mode:text-red-200{% endif %}">
+                            {% if attempt.is_correct %}✓ Correct{% else %}✗ Incorrect{% endif %}
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <p class="text-gray-700 dark-mode:text-gray-300 mb-2">
+                            <strong>Q:</strong> {{ attempt.question_text }}
+                        </p>
+                        {% if attempt.user_answer %}
+                        <p class="text-gray-600 dark-mode:text-gray-400 mb-2">
+                            <strong>Your Answer:</strong> {{ attempt.user_answer }}
+                        </p>
+                        {% endif %}
+                        {% if attempt.correct_answer %}
+                        <details class="mt-2">
+                            <summary class="cursor-pointer text-sm text-blue-600 dark-mode:text-blue-400 hover:underline">
+                                Show Expected Answer
+                            </summary>
+                            <p class="mt-2 text-sm text-gray-600 dark-mode:text-gray-400 pl-4 border-l-2 border-gray-300 dark-mode:border-gray-600">
+                                {{ attempt.correct_answer }}
+                            </p>
+                        </details>
+                        {% endif %}
+                    </div>
+
+                    {% if attempt.final_nlp_score is not None %}
+                    <div class="mt-4 pt-4 border-t border-gray-200 dark-mode:border-gray-700">
+                        <h4 class="text-lg font-semibold mb-3 text-gray-800 dark-mode:text-gray-200">Answer Evaluation (NLP Analysis)</h4>
+                        
+                        <!-- Final Score -->
+                        <div class="mb-4">
+                            <p class="text-sm text-gray-600 dark-mode:text-gray-400 mb-1">Overall Score</p>
+                            <p class="text-3xl font-bold {% if attempt.final_nlp_score >= 85 %}text-green-600 dark-mode:text-green-400{% elif attempt.final_nlp_score >= 60 %}text-blue-600 dark-mode:text-blue-400{% else %}text-red-600 dark-mode:text-red-400{% endif %}">
+                                {{ "%.1f"|format(attempt.final_nlp_score) }}%
+                            </p>
+                        </div>
+                        
+                        <!-- Detailed Scores -->
+                        <div class="grid grid-cols-3 gap-4 mb-4">
+                            <div class="bg-gray-50 dark-mode:bg-gray-800 p-3 rounded-lg">
+                                <p class="text-xs text-gray-600 dark-mode:text-gray-400 mb-1">Keyword Match</p>
+                                <p class="text-lg font-semibold text-gray-800 dark-mode:text-gray-200">{{ "%.1f"|format(attempt.keyword_score) }}%</p>
+                                <p class="text-xs text-gray-500 dark-mode:text-gray-500 mt-1">Weight: 30%</p>
+                            </div>
+                            <div class="bg-gray-50 dark-mode:bg-gray-800 p-3 rounded-lg">
+                                <p class="text-xs text-gray-600 dark-mode:text-gray-400 mb-1">Semantic Similarity</p>
+                                <p class="text-lg font-semibold text-gray-800 dark-mode:text-gray-200">{{ "%.1f"|format(attempt.semantic_score) }}%</p>
+                                <p class="text-xs text-gray-500 dark-mode:text-gray-500 mt-1">Weight: 50%</p>
+                            </div>
+                            <div class="bg-gray-50 dark-mode:bg-gray-800 p-3 rounded-lg">
+                                <p class="text-xs text-gray-600 dark-mode:text-gray-400 mb-1">Grammar</p>
+                                <p class="text-lg font-semibold text-gray-800 dark-mode:text-gray-200">{{ "%.1f"|format(attempt.grammar_score) }}%</p>
+                                <p class="text-xs text-gray-500 dark-mode:text-gray-500 mt-1">Weight: 20%</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Feedback -->
+                        {% if attempt.nlp_feedback %}
+                        <div class="mt-3 p-3 bg-blue-50 dark-mode:bg-blue-900/30 rounded-lg border-l-4 border-blue-500">
+                            <p class="text-sm font-semibold text-gray-800 dark-mode:text-gray-200 mb-1">Feedback:</p>
+                            <p class="text-sm text-gray-700 dark-mode:text-gray-300">{{ attempt.nlp_feedback }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    {% if attempt.voice_clarity_score is not None %}
+                    <div class="mt-4 pt-4 border-t border-gray-200 dark-mode:border-gray-700">
+                        <h4 class="text-sm font-semibold mb-2 text-gray-700 dark-mode:text-gray-300">Voice Analysis</h4>
+                        <div class="grid grid-cols-3 gap-4 text-sm">
+                            <div>
+                                <p class="text-gray-600 dark-mode:text-gray-400">Clarity</p>
+                                <p class="font-semibold text-gray-800 dark-mode:text-gray-200">{{ attempt.voice_clarity_score|round }}%</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600 dark-mode:text-gray-400">Confidence</p>
+                                <p class="font-semibold text-gray-800 dark-mode:text-gray-200">{{ attempt.voice_confidence_score|round }}%</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600 dark-mode:text-gray-400">Feedback</p>
+                                <p class="text-xs text-gray-600 dark-mode:text-gray-400 italic">{{ attempt.voice_tone_analysis[:50] }}...</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="mt-8 flex gap-3 justify-center">
+                <a 
+                    href="{{ url_for('generate_report', session_id=session.id) }}" 
+                    class="btn-primary text-white font-semibold py-3 px-6 rounded-[1.3rem] hover:shadow-lg transition-shadow"
+                    aria-label="Download PDF report">
+                    Download PDF Report
+                </a>
+                <a 
+                    href="{{ url_for('interview_history') }}" 
+                    class="text-gray-700 dark-mode:text-gray-300 underline py-3 px-6"
+                    aria-label="Back to history">
+                    Back to History
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+

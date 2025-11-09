@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Interview History - Technical Interview Platform{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-8 px-4">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-4xl md:text-5xl font-bold mb-6 text-gray-800 dark-mode:text-gray-200">Interview History</h1>
+        <p class="text-lg text-gray-600 dark-mode:text-gray-400 mb-8">Hello, {{ user_name }}.</p>
+
+        {% if not sessions_data %}
+            <div class="card-light dark-mode:card-dark p-12 rounded-2xl shadow-lg text-center">
+                <div class="text-6xl mb-4">📚</div>
+                <h3 class="text-xl font-semibold mb-2 text-gray-800 dark-mode:text-gray-200">
+                    No interview history yet
+                </h3>
+                <p class="text-gray-600 dark-mode:text-gray-400 mb-6">
+                    Complete interviews to view and replay them here.
+                </p>
+                <a href="{{ url_for('interview') }}" class="btn-primary text-white font-semibold py-3 px-6 rounded-[1.3rem] hover:shadow-lg transition-shadow inline-block" aria-label="Start an interview">
+                    Start Interview
+                </a>
+            </div>
+        {% else %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for item in sessions_data %}
+                <div class="card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+                    <div class="mb-4">
+                        <span class="inline-block px-3 py-1 rounded-full text-sm font-semibold
+                            {% if item.session.domain == 'Python' %}bg-blue-100 text-blue-800 dark-mode:bg-blue-900 dark-mode:text-blue-200
+                            {% elif item.session.domain == 'Java' %}bg-orange-100 text-orange-800 dark-mode:bg-orange-900 dark-mode:text-orange-200
+                            {% elif item.session.domain == 'SQL' %}bg-green-100 text-green-800 dark-mode:bg-green-900 dark-mode:text-green-200
+                            {% else %}bg-gray-100 text-gray-800 dark-mode:bg-gray-700 dark-mode:text-gray-200
+                            {% endif %}">
+                            {{ item.session.domain }}
+                        </span>
+                    </div>
+
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 dark-mode:text-gray-400 mb-1">
+                            Started: {{ item.session.started_at.strftime('%B %d, %Y at %I:%M %p') if item.session.started_at else 'Date not available' }}
+                        </p>
+                        <p class="text-sm text-gray-600 dark-mode:text-gray-400 mb-1">
+                            Questions: {{ item.total_attempts }}/{{ item.session.total_questions }}
+                        </p>
+                        <p class="text-sm text-gray-600 dark-mode:text-gray-400">
+                            Correct: {{ item.correct_answers }}/{{ item.total_attempts }}
+                        </p>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            {% if item.has_voice_analysis %}
+                            <p class="text-xs text-blue-600 dark-mode:text-blue-400">✓ Voice analysis</p>
+                            {% endif %}
+                            {% if item.has_video %}
+                            <p class="text-xs text-green-600 dark-mode:text-green-400">📹 Video available</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <a 
+                            href="{{ url_for('interview_replay', session_id=item.session.id) }}" 
+                            class="btn-primary text-white font-semibold py-2 px-4 rounded-[1.3rem] text-sm hover:shadow-lg transition-shadow flex-1 text-center"
+                            aria-label="Replay interview session">
+                            Replay
+                        </a>
+                        <a 
+                            href="{{ url_for('generate_report', session_id=item.session.id) }}" 
+                            class="text-gray-700 dark-mode:text-gray-300 underline text-sm py-2 px-2"
+                            aria-label="Download report for this session">
+                            PDF
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+

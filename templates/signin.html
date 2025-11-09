@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In - Technical Interview Platform{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center px-4 py-12">
+    <div class="w-full max-w-md">
+        <div class="card-light dark-mode:card-dark p-8 rounded-2xl shadow-lg">
+            <h2 class="text-3xl font-bold mb-6 text-center text-gray-800 dark-mode:text-gray-200">
+                Sign In
+            </h2>
+
+            <form method="POST" action="{{ url_for('signin') }}" id="signin-form" novalidate>
+                <div class="mb-4">
+                    <label for="email" class="block text-sm font-semibold mb-2 text-gray-700 dark-mode:text-gray-300">
+                        Email
+                    </label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        value="{{ email if email else '' }}"
+                        required
+                        aria-label="Enter your email address"
+                        class="input-field input-field-light dark-mode:input-field-dark w-full px-4 py-3 border border-gray-300 dark-mode:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="john@example.com">
+                    <span id="email-error" class="text-red-500 text-sm mt-1 hidden"></span>
+                </div>
+
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-semibold mb-2 text-gray-700 dark-mode:text-gray-300">
+                        Password
+                    </label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        required
+                        aria-label="Enter your password"
+                        class="input-field input-field-light dark-mode:input-field-dark w-full px-4 py-3 border border-gray-300 dark-mode:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter your password">
+                    <span id="password-error" class="text-red-500 text-sm mt-1 hidden"></span>
+                </div>
+
+                <button 
+                    type="submit" 
+                    class="btn-primary text-white font-semibold py-3 px-6 w-full rounded-[1.3rem] hover:shadow-lg transition-shadow"
+                    aria-label="Submit sign in form">
+                    Sign In
+                </button>
+            </form>
+
+            <p class="mt-6 text-center text-sm text-gray-600 dark-mode:text-gray-400">
+                Don't have an account? 
+                <a href="{{ url_for('signup') }}" class="text-blue-600 dark-mode:text-blue-400 hover:underline font-semibold">
+                    Sign Up
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Email validation regex
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+    function showError(fieldId, message) {
+        const errorSpan = document.getElementById(fieldId + '-error');
+        if (errorSpan) {
+            errorSpan.textContent = message;
+            errorSpan.classList.remove('hidden');
+        }
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.classList.add('border-red-500');
+        }
+    }
+
+    function clearError(fieldId) {
+        const errorSpan = document.getElementById(fieldId + '-error');
+        if (errorSpan) {
+            errorSpan.classList.add('hidden');
+        }
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.classList.remove('border-red-500');
+        }
+    }
+
+    document.getElementById('signin-form').addEventListener('submit', function(e) {
+        let isValid = true;
+
+        // Validate email
+        const email = document.getElementById('email').value.trim();
+        if (!email) {
+            showError('email', 'Email is required');
+            isValid = false;
+        } else if (!emailRegex.test(email)) {
+            showError('email', 'Please enter a valid email address');
+            isValid = false;
+        } else {
+            clearError('email');
+        }
+
+        // Validate password
+        const password = document.getElementById('password').value;
+        if (!password) {
+            showError('password', 'Password is required');
+            isValid = false;
+        } else {
+            clearError('password');
+        }
+
+        if (!isValid) {
+            e.preventDefault();
+        }
+    });
+
+    // Real-time validation
+    document.getElementById('email').addEventListener('blur', function() {
+        const email = this.value.trim();
+        if (email && !emailRegex.test(email)) {
+            showError('email', 'Please enter a valid email address');
+        } else {
+            clearError('email');
+        }
+    });
+</script>
+{% endblock %}
+
+

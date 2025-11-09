@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Technical Interview Platform{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-8 px-4">
+    <div class="max-w-7xl mx-auto">
+        <!-- User Info Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold mb-2 text-gray-800 dark-mode:text-gray-200">
+                Welcome, {{ user_name }}!
+            </h1>
+            <p class="text-lg text-gray-600 dark-mode:text-gray-400">
+                {{ user_email }}
+            </p>
+        </div>
+
+        <!-- Progress Section -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Total Interviews Card -->
+            <div class="card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg">
+                <h3 class="text-lg font-semibold mb-2 text-gray-700 dark-mode:text-gray-300">
+                    Total Interviews
+                </h3>
+                <p class="text-4xl font-bold text-gray-800 dark-mode:text-gray-200">
+                    {{ total_interviews }}
+                </p>
+            </div>
+
+            <!-- Overall Accuracy Card -->
+            <div class="card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg">
+                <h3 class="text-lg font-semibold mb-2 text-gray-700 dark-mode:text-gray-300">
+                    Overall Accuracy
+                </h3>
+                <div class="flex items-center gap-3">
+                    <p class="text-4xl font-bold text-gray-800 dark-mode:text-gray-200">
+                        {{ overall_accuracy }}%
+                    </p>
+                    <div class="flex-1">
+                        <div class="w-full bg-gray-200 dark-mode:bg-gray-700 rounded-full h-3">
+                            <div 
+                                class="bg-blue-500 h-3 rounded-full transition-all duration-500"
+                                style="width: {{ overall_accuracy }}%">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Average Score Card -->
+            <div class="card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg">
+                <h3 class="text-lg font-semibold mb-2 text-gray-700 dark-mode:text-gray-300">
+                    Average Score
+                </h3>
+                <p class="text-4xl font-bold text-gray-800 dark-mode:text-gray-200">
+                    {{ avg_score }}/100
+                </p>
+            </div>
+        </div>
+
+        <!-- Start New Interview Section -->
+        <div class="mb-8">
+            <a 
+                href="{{ url_for('interview') }}" 
+                class="btn-primary text-white font-semibold py-4 px-8 text-lg rounded-[1.3rem] hover:shadow-lg transition-shadow inline-flex items-center gap-2"
+                aria-label="Start a new interview">
+                <span>+</span>
+                <span>Start New Interview</span>
+            </a>
+        </div>
+
+        <!-- Completed Interviews Section -->
+        <div class="mb-4">
+            <h2 class="text-2xl md:text-3xl font-bold text-gray-800 dark-mode:text-gray-200">
+                Completed Interviews
+            </h2>
+        </div>
+
+        {% if interviews %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for interview in interviews %}
+                <div class="card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
+                    <!-- Domain Badge -->
+                    <div class="mb-4">
+                        <span class="inline-block px-3 py-1 rounded-full text-sm font-semibold
+                            {% if interview.domain == 'Python' %}bg-blue-100 text-blue-800 dark-mode:bg-blue-900 dark-mode:text-blue-200
+                            {% elif interview.domain == 'Java' %}bg-orange-100 text-orange-800 dark-mode:bg-orange-900 dark-mode:text-orange-200
+                            {% elif interview.domain == 'SQL' %}bg-green-100 text-green-800 dark-mode:bg-green-900 dark-mode:text-green-200
+                            {% else %}bg-gray-100 text-gray-800 dark-mode:bg-gray-700 dark-mode:text-gray-200
+                            {% endif %}">
+                            {{ interview.domain }}
+                        </span>
+                    </div>
+
+                    <!-- Score and Accuracy -->
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-gray-600 dark-mode:text-gray-400">Score</span>
+                            <span class="text-2xl font-bold text-gray-800 dark-mode:text-gray-200">
+                                {{ interview.score }}/100
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-gray-600 dark-mode:text-gray-400">Accuracy</span>
+                            <span class="text-lg font-semibold text-gray-700 dark-mode:text-gray-300">
+                                {{ interview.accuracy_rate }}%
+                            </span>
+                        </div>
+                        <div class="w-full bg-gray-200 dark-mode:bg-gray-700 rounded-full h-2 mt-2">
+                            <div 
+                                class="bg-blue-500 h-2 rounded-full transition-all duration-500"
+                                style="width: {{ interview.accuracy_rate }}%">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Summary -->
+                    {% if interview.performance_summary %}
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 dark-mode:text-gray-400 italic">
+                            "{{ interview.performance_summary }}"
+                        </p>
+                    </div>
+                    {% else %}
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-500 dark-mode:text-gray-500 italic">
+                            No feedback available
+                        </p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Stats -->
+                    <div class="text-xs text-gray-500 dark-mode:text-gray-500">
+                        <p>{{ interview.correct_answers }}/{{ interview.total_questions }} questions correct</p>
+                        <p>{{ interview.created_at.strftime('%B %d, %Y at %I:%M %p') if interview.created_at else 'Date not available' }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <!-- Empty State -->
+            <div class="card-light dark-mode:card-dark p-12 rounded-2xl shadow-lg text-center">
+                <div class="text-6xl mb-4">📝</div>
+                <h3 class="text-xl font-semibold mb-2 text-gray-800 dark-mode:text-gray-200">
+                    No interviews completed yet
+                </h3>
+                <p class="text-gray-600 dark-mode:text-gray-400 mb-6">
+                    Start your first interview to track your progress and improve your technical skills.
+                </p>
+                <a 
+                    href="{{ url_for('interview') }}" 
+                    class="btn-primary text-white font-semibold py-3 px-6 rounded-[1.3rem] hover:shadow-lg transition-shadow inline-block"
+                    aria-label="Start your first interview">
+                    Start Your First Interview
+                </a>
+            </div>
+        {% endif %}
+
+        <!-- Logout Button -->
+        <div class="mt-8 text-center">
+            <a 
+                href="{{ url_for('logout') }}" 
+                class="text-gray-600 dark-mode:text-gray-400 hover:text-gray-800 dark-mode:hover:text-gray-200 underline text-sm"
+                aria-label="Logout from your account">
+                Logout
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Technical Interview Platform{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Georgia:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-light: hsl(0, 0%, 100%);
+            --bg-dark: hsl(0, 0%, 0%);
+            --text-light: hsl(210, 25%, 7.84%);
+            --text-dark: hsl(200, 6.67%, 91.18%);
+            --card-light: hsl(180, 6.67%, 97.06%);
+            --card-dark: hsl(228, 9.80%, 10%);
+            --primary-blue: hsl(203.89, 88.28%, 53.14%);
+            --input-bg: hsl(200, 23.08%, 97.45%);
+        }
+
+        body {
+            font-family: 'Open Sans', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Georgia', serif;
+        }
+
+        .light-mode {
+            background-color: var(--bg-light);
+            color: var(--text-light);
+            background-image: radial-gradient( circle 600px at 0 0, rgba(59,130,246,0.08), transparent 60% );
+        }
+
+        .dark-mode {
+            background-color: var(--bg-dark);
+            color: var(--text-dark);
+            background-image: radial-gradient( circle 600px at 100% 0, rgba(59,130,246,0.15), transparent 60% );
+        }
+
+        .card-light {
+            background-color: var(--card-light);
+        }
+
+        .card-dark {
+            background-color: var(--card-dark);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-blue);
+            border-radius: 1.3rem;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: hsl(203.89, 88.28%, 45%);
+        }
+
+        .input-field {
+            background-color: var(--input-bg);
+            border-radius: 1.3rem;
+            min-height: 44px;
+        }
+
+        .input-field-light {
+            background-color: var(--input-bg);
+            color: var(--text-light);
+        }
+
+        .input-field-dark {
+            background-color: hsl(228, 9.80%, 15%);
+            color: var(--text-dark);
+        }
+
+        /* Dark mode specific styles */
+        .dark-mode .dark-mode\:text-gray-200 { color: var(--text-dark); }
+        .dark-mode .dark-mode\:text-gray-300 { color: hsl(200, 6.67%, 85%); }
+        .dark-mode .dark-mode\:text-gray-400 { color: hsl(200, 6.67%, 75%); }
+        .dark-mode .dark-mode\:text-gray-500 { color: hsl(200, 6.67%, 65%); }
+        .dark-mode .dark-mode\:text-gray-600 { color: hsl(200, 6.67%, 55%); }
+        .dark-mode .dark-mode\:text-gray-700 { color: hsl(200, 6.67%, 45%); }
+        .dark-mode .dark-mode\:text-gray-800 { color: var(--text-dark); }
+        .dark-mode .dark-mode\:bg-gray-200 { background-color: hsl(228, 9.80%, 20%); }
+        .dark-mode .dark-mode\:bg-gray-600 { background-color: hsl(228, 9.80%, 25%); }
+        .dark-mode .dark-mode\:bg-gray-700 { background-color: hsl(228, 9.80%, 20%); }
+        .dark-mode .dark-mode\:bg-gray-800 { background-color: hsl(228, 9.80%, 15%); }
+        .dark-mode .dark-mode\:border-gray-600 { border-color: hsl(228, 9.80%, 25%); }
+        .dark-mode .dark-mode\:card-dark { background-color: var(--card-dark); }
+        .dark-mode .dark-mode\:bg-blue-400 { color: hsl(203.89, 88.28%, 65%); }
+        .dark-mode .dark-mode\:bg-blue-900 { background-color: hsl(203.89, 88.28%, 25%); }
+        .dark-mode .dark-mode\:text-blue-200 { color: hsl(203.89, 88.28%, 75%); }
+        .dark-mode .dark-mode\:bg-orange-900 { background-color: hsl(25, 88.28%, 25%); }
+        .dark-mode .dark-mode\:text-orange-200 { color: hsl(25, 88.28%, 75%); }
+        .dark-mode .dark-mode\:bg-green-900 { background-color: hsl(120, 88.28%, 25%); }
+        .dark-mode .dark-mode\:text-green-200 { color: hsl(120, 88.28%, 75%); }
+        .dark-mode .dark-mode\:hover\:bg-gray-700:hover { background-color: hsl(228, 9.80%, 20%); }
+        .dark-mode .dark-mode\:hover\:text-gray-200:hover { color: var(--text-dark); }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="light-mode">
+    <!-- Global Navbar -->
+    <header class="w-full">
+        <nav class="card-light dark-mode:card-dark shadow-sm">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex items-center justify-between h-16">
+                    <!-- Brand -->
+                    <a href="{{ url_for('landing') }}" class="text-lg font-bold text-gray-800 dark-mode:text-gray-200 flex items-center gap-2" aria-label="Go to home">
+                        <svg class="w-6 h-6 text-blue-600 dark-mode:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span>Technical Interview Platform</span>
+                    </a>
+                    <!-- Links -->
+                    <div class="hidden sm:flex items-center gap-2 text-sm">
+                        {% if session.get('user_id') %}
+                            {% set ep = request.endpoint %}
+                            <a href="{{ url_for('dashboard') }}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 dark-mode:text-gray-300 hover:bg-gray-100 dark-mode:hover:bg-gray-800 transition-all duration-200 {% if ep=='dashboard' %}bg-blue-50 dark-mode:bg-blue-900/20 text-blue-600 dark-mode:text-blue-400 font-semibold{% endif %}" aria-label="Dashboard">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                                </svg>
+                                <span>Dashboard</span>
+                            </a>
+                            <a href="{{ url_for('interview') }}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 dark-mode:text-gray-300 hover:bg-gray-100 dark-mode:hover:bg-gray-800 transition-all duration-200 {% if ep=='interview' %}bg-blue-50 dark-mode:bg-blue-900/20 text-blue-600 dark-mode:text-blue-400 font-semibold{% endif %}" aria-label="Interview">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <span>Interview</span>
+                            </a>
+                            <a href="{{ url_for('progress') }}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 dark-mode:text-gray-300 hover:bg-gray-100 dark-mode:hover:bg-gray-800 transition-all duration-200 {% if ep=='progress' %}bg-blue-50 dark-mode:bg-blue-900/20 text-blue-600 dark-mode:text-blue-400 font-semibold{% endif %}" aria-label="Progress">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                                <span>Progress</span>
+                            </a>
+                            <a href="{{ url_for('interview_history') }}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 dark-mode:text-gray-300 hover:bg-gray-100 dark-mode:hover:bg-gray-800 transition-all duration-200 {% if ep=='interview_history' or ep=='interview_replay' %}bg-blue-50 dark-mode:bg-blue-900/20 text-blue-600 dark-mode:text-blue-400 font-semibold{% endif %}" aria-label="Interview history">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span>History</span>
+                            </a>
+                            <a href="{{ url_for('profile') }}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 dark-mode:text-gray-300 hover:bg-gray-100 dark-mode:hover:bg-gray-800 transition-all duration-200 {% if ep=='profile' %}bg-blue-50 dark-mode:bg-blue-900/20 text-blue-600 dark-mode:text-blue-400 font-semibold{% endif %}" aria-label="Profile">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                </svg>
+                                <span>Profile</span>
+                            </a>
+                            <a href="{{ url_for('settings') }}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-700 dark-mode:text-gray-300 hover:bg-gray-100 dark-mode:hover:bg-gray-800 transition-all duration-200 {% if ep=='settings' %}bg-blue-50 dark-mode:bg-blue-900/20 text-blue-600 dark-mode:text-blue-400 font-semibold{% endif %}" aria-label="Settings">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                <span>Settings</span>
+                            </a>
+                            <a href="{{ url_for('logout') }}" class="flex items-center gap-2 px-3 py-2 rounded-lg text-red-600 dark-mode:text-red-400 hover:bg-red-50 dark-mode:hover:bg-red-900/20 transition-all duration-200" aria-label="Logout">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                </svg>
+                                <span>Logout</span>
+                            </a>
+                        {% else %}
+                            {% set ep = request.endpoint %}
+                            <a href="{{ url_for('signin') }}" class="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-700 dark-mode:text-gray-300 hover:bg-gray-100 dark-mode:hover:bg-gray-800 transition-all duration-200 {% if ep=='signin' %}bg-blue-50 dark-mode:bg-blue-900/20 text-blue-600 dark-mode:text-blue-400 font-semibold{% endif %}" aria-label="Sign in">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                                </svg>
+                                <span>Sign In</span>
+                            </a>
+                            <a href="{{ url_for('signup') }}" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200 font-semibold {% if ep=='signup' %}ring-2 ring-blue-300{% endif %}" aria-label="Sign up">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                                </svg>
+                                <span>Sign Up</span>
+                            </a>
+                        {% endif %}
+                    </div>
+                    <!-- Mobile menu button -->
+                    {% if session.get('user_id') %}
+                    <button 
+                        id="mobile-menu-btn"
+                        class="sm:hidden p-2 rounded-lg bg-gray-100 dark-mode:bg-gray-800 hover:bg-gray-200 dark-mode:hover:bg-gray-700 transition-all duration-200"
+                        aria-label="Toggle mobile menu"
+                        onclick="toggleMobileMenu()">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                    {% endif %}
+                    <!-- Theme toggle -->
+                    <div class="flex items-center gap-3">
+                        <button 
+                            id="theme-toggle" 
+                            class="p-2 rounded-lg bg-gray-100 dark-mode:bg-gray-800 hover:bg-gray-200 dark-mode:hover:bg-gray-700 transition-all duration-200 border border-gray-200 dark-mode:border-gray-700"
+                            aria-label="Toggle theme"
+                            onclick="toggleTheme()">
+                            <span id="theme-icon" class="text-xl">🌙</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- Mobile Menu -->
+            {% if session.get('user_id') %}
+            <div id="mobile-menu" class="hidden sm:hidden border-t border-gray-200 dark-mode:border-gray-700">
+                <div class="px-4 py-3 space-y-1">
+                    {% set ep = request.endpoint %}
+                    <a href="{{ url_for('dashboard') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark-mode:text-gray-300 hover:bg-gray-100 dark-mode:hover:bg-gray-800 transition-all {% if ep=='dashboard' %}bg-blue-50 dark-mode:bg-blue-900/20 text-blue-600 dark-mode:text-blue-400 font-semibold{% endif %}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="{{ url_for('interview') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark-mode:text-gray-300 hover:bg-gray-100 dark-mode:hover:bg-gray-800 transition-all {% if ep=='interview' %}bg-blue-50 dark-mode:bg-blue-900/20 text-blue-600 dark-mode:text-blue-400 font-semibold{% endif %}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <span>Interview</span>
+                    </a>
+                    <a href="{{ url_for('progress') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark-mode:text-gray-300 hover:bg-gray-100 dark-mode:hover:bg-gray-800 transition-all {% if ep=='progress' %}bg-blue-50 dark-mode:bg-blue-900/20 text-blue-600 dark-mode:text-blue-400 font-semibold{% endif %}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        <span>Progress</span>
+                    </a>
+                    <a href="{{ url_for('interview_history') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark-mode:text-gray-300 hover:bg-gray-100 dark-mode:hover:bg-gray-800 transition-all {% if ep=='interview_history' or ep=='interview_replay' %}bg-blue-50 dark-mode:bg-blue-900/20 text-blue-600 dark-mode:text-blue-400 font-semibold{% endif %}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span>History</span>
+                    </a>
+                    <a href="{{ url_for('profile') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark-mode:text-gray-300 hover:bg-gray-100 dark-mode:hover:bg-gray-800 transition-all {% if ep=='profile' %}bg-blue-50 dark-mode:bg-blue-900/20 text-blue-600 dark-mode:text-blue-400 font-semibold{% endif %}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                        <span>Profile</span>
+                    </a>
+                    <a href="{{ url_for('settings') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark-mode:text-gray-300 hover:bg-gray-100 dark-mode:hover:bg-gray-800 transition-all {% if ep=='settings' %}bg-blue-50 dark-mode:bg-blue-900/20 text-blue-600 dark-mode:text-blue-400 font-semibold{% endif %}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        <span>Settings</span>
+                    </a>
+                    <a href="{{ url_for('logout') }}" class="flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 dark-mode:text-red-400 hover:bg-red-50 dark-mode:hover:bg-red-900/20 transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </nav>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4">
+                {% for category, message in messages %}
+                    <div 
+                        class="flash mb-2 p-4 rounded-lg shadow-lg relative {% if category == 'error' %}bg-red-500 text-white{% else %}bg-green-500 text-white{% endif %}"
+                        role="alert"
+                        data-auto-dismiss="true">
+                        <span class="block pr-8">{{ message }}</span>
+                        <button 
+                            type="button"
+                            class="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30"
+                            aria-label="Close notification"
+                            onclick="this.parentElement.remove()">
+                            ✕
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+
+    <!-- Global Footer -->
+    <footer class="mt-16 py-6">
+        <div class="max-w-7xl mx-auto px-4 text-center text-sm text-gray-600 dark-mode:text-gray-400">
+            Technical Interview Platform
+        </div>
+    </footer>
+
+    <script>
+        // Theme management
+        function getTheme() {
+            return localStorage.getItem('theme') || 'light';
+        }
+
+        function setTheme(theme) {
+            localStorage.setItem('theme', theme);
+            document.body.className = theme === 'dark' ? 'dark-mode' : 'light-mode';
+            const icon = document.getElementById('theme-icon');
+            if (icon) {
+                icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+            }
+        }
+
+        function toggleTheme() {
+            const currentTheme = getTheme();
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            setTheme(newTheme);
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            if (menu) {
+                menu.classList.toggle('hidden');
+            }
+        }
+
+        // Initialize theme on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const theme = getTheme();
+            setTheme(theme);
+
+            // Auto-dismiss flash messages after 5 seconds
+            const flashes = document.querySelectorAll('.flash[data-auto-dismiss="true"]');
+            flashes.forEach(function(el) {
+                setTimeout(function() {
+                    if (el && el.parentElement) {
+                        el.remove();
+                    }
+                }, 5000);
+            });
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+

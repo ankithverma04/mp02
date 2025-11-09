@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Technical Interview Platform{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-8 px-4">
+    <div class="max-w-3xl mx-auto">
+        <div class="mb-6">
+            <h1 class="text-4xl md:text-5xl font-bold mb-2 text-gray-800 dark-mode:text-gray-200">Profile</h1>
+            <p class="text-gray-600 dark-mode:text-gray-400">Manage your personal information and account security</p>
+        </div>
+
+        <div class="card-light dark-mode:card-dark p-8 rounded-2xl shadow-lg border-2 border-transparent hover:border-blue-300 dark-mode:hover:border-blue-700 transition-all duration-300">
+            <form method="POST" action="{{ url_for('profile') }}" novalidate id="profile-form">
+                <!-- Basic Info -->
+                <div class="mb-8">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="p-3 rounded-lg bg-blue-100 dark-mode:bg-blue-900/30">
+                            <svg class="w-6 h-6 text-blue-600 dark-mode:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                        </div>
+                        <h2 class="text-2xl font-semibold text-gray-800 dark-mode:text-gray-200">Basic Information</h2>
+                    </div>
+                    <div class="grid grid-cols-1 gap-5">
+                        <div>
+                            <label for="name" class="flex items-center gap-2 text-sm font-semibold mb-2 text-gray-700 dark-mode:text-gray-300">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                </svg>
+                                Full Name
+                            </label>
+                            <input type="text" id="name" name="name" value="{{ name }}" required aria-label="Your full name" class="input-field input-field-light dark-mode:input-field-dark w-full px-4 py-3 border-2 border-gray-200 dark-mode:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+                        </div>
+                        <div>
+                            <label for="email" class="flex items-center gap-2 text-sm font-semibold mb-2 text-gray-700 dark-mode:text-gray-300">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                </svg>
+                                Email Address
+                            </label>
+                            <input type="email" id="email" name="email" value="{{ email }}" required aria-label="Your email address" class="input-field input-field-light dark-mode:input-field-dark w-full px-4 py-3 border-2 border-gray-200 dark-mode:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Password Change -->
+                <div class="mb-8 pt-8 border-t border-gray-200 dark-mode:border-gray-700">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="p-3 rounded-lg bg-green-100 dark-mode:bg-green-900/30">
+                            <svg class="w-6 h-6 text-green-600 dark-mode:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                            </svg>
+                        </div>
+                        <h2 class="text-2xl font-semibold text-gray-800 dark-mode:text-gray-200">Change Password</h2>
+                    </div>
+                    <p class="text-sm text-gray-600 dark-mode:text-gray-400 mb-5 ml-14">Leave password fields empty if you don't want to change your password.</p>
+                    <div class="grid grid-cols-1 gap-5">
+                        <div>
+                            <label for="current_password" class="flex items-center gap-2 text-sm font-semibold mb-2 text-gray-700 dark-mode:text-gray-300">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                                </svg>
+                                Current Password
+                            </label>
+                            <input type="password" id="current_password" name="current_password" aria-label="Current password" class="input-field input-field-light dark-mode:input-field-dark w-full px-4 py-3 border-2 border-gray-200 dark-mode:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+                        </div>
+                        <div>
+                            <label for="new_password" class="flex items-center gap-2 text-sm font-semibold mb-2 text-gray-700 dark-mode:text-gray-300">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                </svg>
+                                New Password
+                            </label>
+                            <input type="password" id="new_password" name="new_password" aria-label="New password" class="input-field input-field-light dark-mode:input-field-dark w-full px-4 py-3 border-2 border-gray-200 dark-mode:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200" placeholder="At least 8 characters, include a number and special character">
+                            <p class="text-xs text-gray-500 dark-mode:text-gray-500 mt-1 ml-1">Must contain at least 8 characters, one number, and one special character</p>
+                        </div>
+                        <div>
+                            <label for="confirm_password" class="flex items-center gap-2 text-sm font-semibold mb-2 text-gray-700 dark-mode:text-gray-300">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Confirm New Password
+                            </label>
+                            <input type="password" id="confirm_password" name="confirm_password" aria-label="Confirm new password" class="input-field input-field-light dark-mode:input-field-dark w-full px-4 py-3 border-2 border-gray-200 dark-mode:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+                            <p id="password-match" class="text-xs mt-1 ml-1 hidden"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 pt-6 border-t border-gray-200 dark-mode:border-gray-700">
+                    <button type="submit" id="save-btn" class="btn-primary text-white font-semibold py-3 px-8 rounded-[1.3rem] shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Save changes">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span>Save Changes</span>
+                        </span>
+                    </button>
+                    <a href="{{ url_for('dashboard') }}" class="px-6 py-3 rounded-[1.3rem] text-gray-700 dark-mode:text-gray-300 hover:bg-gray-100 dark-mode:hover:bg-gray-800 transition-all duration-200" aria-label="Back to dashboard">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+(function() {
+    const form = document.getElementById('profile-form');
+    const saveBtn = document.getElementById('save-btn');
+    const nameInput = document.getElementById('name');
+    const emailInput = document.getElementById('email');
+    const currentPasswordInput = document.getElementById('current_password');
+    const newPasswordInput = document.getElementById('new_password');
+    const confirmPasswordInput = document.getElementById('confirm_password');
+    const passwordMatch = document.getElementById('password-match');
+    
+    // Store initial values
+    const initialName = nameInput.value;
+    const initialEmail = emailInput.value;
+    
+    // Validate password match
+    function validatePasswordMatch() {
+        const newPassword = newPasswordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+        
+        if (newPassword && confirmPassword) {
+            if (newPassword === confirmPassword) {
+                confirmPasswordInput.classList.remove('border-red-500');
+                confirmPasswordInput.classList.add('border-green-500');
+                passwordMatch.textContent = '✓ Passwords match';
+                passwordMatch.classList.remove('text-red-500', 'hidden');
+                passwordMatch.classList.add('text-green-500');
+            } else {
+                confirmPasswordInput.classList.remove('border-green-500');
+                confirmPasswordInput.classList.add('border-red-500');
+                passwordMatch.textContent = '✗ Passwords do not match';
+                passwordMatch.classList.remove('text-green-500', 'hidden');
+                passwordMatch.classList.add('text-red-500');
+            }
+        } else {
+            confirmPasswordInput.classList.remove('border-red-500', 'border-green-500');
+            passwordMatch.classList.add('hidden');
+        }
+    }
+    
+    // Check if form has changes
+    function checkFormChanges() {
+        const nameChanged = nameInput.value !== initialName;
+        const emailChanged = emailInput.value !== initialEmail;
+        const passwordFieldsFilled = currentPasswordInput.value || newPasswordInput.value || confirmPasswordInput.value;
+        const passwordsMatch = !newPasswordInput.value || !confirmPasswordInput.value || newPasswordInput.value === confirmPasswordInput.value;
+        
+        const hasChanges = nameChanged || emailChanged || passwordFieldsFilled;
+        const isValid = passwordsMatch && (!passwordFieldsFilled || (currentPasswordInput.value && newPasswordInput.value && confirmPasswordInput.value));
+        
+        saveBtn.disabled = !hasChanges || !isValid;
+    }
+    
+    // Event listeners
+    nameInput.addEventListener('input', checkFormChanges);
+    emailInput.addEventListener('input', checkFormChanges);
+    currentPasswordInput.addEventListener('input', checkFormChanges);
+    newPasswordInput.addEventListener('input', () => {
+        validatePasswordMatch();
+        checkFormChanges();
+    });
+    confirmPasswordInput.addEventListener('input', () => {
+        validatePasswordMatch();
+        checkFormChanges();
+    });
+    
+    // Initial check
+    checkFormChanges();
+    
+    // Handle form submission
+    form.addEventListener('submit', function(e) {
+        // Validate password match before submit
+        if (newPasswordInput.value && newPasswordInput.value !== confirmPasswordInput.value) {
+            e.preventDefault();
+            alert('Passwords do not match. Please check and try again.');
+            return false;
+        }
+        
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="flex items-center gap-2"><svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>Saving...</span></span>';
+    });
+})();
+</script>
+{% endblock %}
+{% endblock %}
+

@@ -1,0 +1,595 @@
+{% extends "base.html" %}
+
+{% block title %}Interview - Technical Interview Platform{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-8 px-4">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-4xl md:text-5xl font-bold mb-6 text-gray-800 dark-mode:text-gray-200">
+            Interview
+        </h1>
+
+        <!-- Domain Selection -->
+        <div class="card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg mb-6 border-2 border-transparent hover:border-blue-300 dark-mode:hover:border-blue-700 transition-all duration-300">
+            <label for="domain" class="block text-sm font-semibold mb-3 text-gray-700 dark-mode:text-gray-300">
+                Select Interview Domain
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                <label class="relative flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md domain-option {% if domain == 'python' %}border-blue-500 bg-blue-50 dark-mode:bg-blue-900/20{% else %}border-gray-200 dark-mode:border-gray-700 hover:border-blue-300 dark-mode:hover:border-blue-600{% endif %}">
+                    <input type="radio" name="domain" value="python" id="domain-python" class="sr-only" {% if domain == 'python' %}checked{% endif %}>
+                    <div class="flex items-center gap-3 w-full">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 dark-mode:bg-blue-900/30 flex items-center justify-center">
+                            <span class="text-xl">🐍</span>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-gray-800 dark-mode:text-gray-200">Python</div>
+                            <div class="text-xs text-gray-500 dark-mode:text-gray-400">Python Programming</div>
+                        </div>
+                    </div>
+                </label>
+                <label class="relative flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md domain-option {% if domain == 'java' %}border-blue-500 bg-blue-50 dark-mode:bg-blue-900/20{% else %}border-gray-200 dark-mode:border-gray-700 hover:border-blue-300 dark-mode:hover:border-blue-600{% endif %}">
+                    <input type="radio" name="domain" value="java" id="domain-java" class="sr-only" {% if domain == 'java' %}checked{% endif %}>
+                    <div class="flex items-center gap-3 w-full">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-orange-100 dark-mode:bg-orange-900/30 flex items-center justify-center">
+                            <span class="text-xl">☕</span>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-gray-800 dark-mode:text-gray-200">Java</div>
+                            <div class="text-xs text-gray-500 dark-mode:text-gray-400">Java Programming</div>
+                        </div>
+                    </div>
+                </label>
+                <label class="relative flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md domain-option {% if domain == 'sql' %}border-blue-500 bg-blue-50 dark-mode:bg-blue-900/20{% else %}border-gray-200 dark-mode:border-gray-700 hover:border-blue-300 dark-mode:hover:border-blue-600{% endif %}">
+                    <input type="radio" name="domain" value="sql" id="domain-sql" class="sr-only" {% if domain == 'sql' %}checked{% endif %}>
+                    <div class="flex items-center gap-3 w-full">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-green-100 dark-mode:bg-green-900/30 flex items-center justify-center">
+                            <span class="text-xl">🗄️</span>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-gray-800 dark-mode:text-gray-200">SQL</div>
+                            <div class="text-xs text-gray-500 dark-mode:text-gray-400">Database Queries</div>
+                        </div>
+                    </div>
+                </label>
+            </div>
+            <div class="flex justify-center">
+                <button id="start-btn" class="btn-primary text-white font-semibold px-8 py-3 rounded-[1.3rem] shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg" aria-label="Start interview" disabled>
+                    <span class="flex items-center gap-2">
+                        <span>Start Interview</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </span>
+                </button>
+            </div>
+            <p id="domain-error" class="text-red-500 text-sm mt-3 text-center hidden">Please select a domain to start the interview.</p>
+        </div>
+
+        <!-- Video Preview & Recording -->
+        <div id="video-wrap" class="hidden card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg mb-6">
+            <div class="mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-xl font-semibold text-gray-800 dark-mode:text-gray-200">Video Preview</h2>
+                    <div id="recording-indicator" class="hidden flex items-center gap-2">
+                        <span class="relative flex h-3 w-3">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                        </span>
+                        <span class="text-sm font-semibold text-red-600 dark-mode:text-red-400">Recording</span>
+                    </div>
+                </div>
+                <video id="video-preview" autoplay muted playsinline class="w-full rounded-lg bg-gray-900" style="max-height: 400px;"></video>
+            </div>
+            <div class="flex gap-3">
+                <button id="start-interview-btn" class="btn-primary text-white font-semibold px-6 py-2 rounded-[1.3rem]" aria-label="Start interview recording">Start Interview</button>
+                <button id="end-interview-btn" class="hidden btn-secondary text-gray-700 dark-mode:text-gray-300 font-semibold px-6 py-2 rounded-[1.3rem] border border-gray-300 dark-mode:border-gray-600" aria-label="End interview recording" disabled>End Interview</button>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div id="progress-wrap" class="hidden card-light dark-mode:card-dark p-4 rounded-2xl shadow mb-6">
+            <div class="flex justify-between text-sm text-gray-600 dark-mode:text-gray-400 mb-2">
+                <span>Progress</span>
+                <span id="progress-label">0/5</span>
+            </div>
+            <div class="w-full bg-gray-200 dark-mode:bg-gray-700 rounded-full h-3">
+                <div id="progress-bar" class="bg-blue-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Question Card -->
+        <div id="question-card" class="hidden card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg mb-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark-mode:text-gray-200">Question</h2>
+            <p id="question-text" class="text-gray-700 dark-mode:text-gray-300 mb-4"></p>
+
+            <!-- Voice Controls -->
+            <div class="mt-4">
+                <div class="flex flex-wrap items-center gap-3 mb-3">
+                    <button id="record-btn" class="btn-primary text-white font-semibold px-6 py-2 rounded-[1.3rem] shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md" aria-label="Record your answer">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"></path>
+                            </svg>
+                            <span>Start Speaking</span>
+                        </span>
+                    </button>
+                    <button id="stop-btn" class="px-6 py-2 rounded-[1.3rem] font-semibold border-2 border-red-300 dark-mode:border-red-700 text-red-600 dark-mode:text-red-400 bg-red-50 dark-mode:bg-red-900/20 hover:bg-red-100 dark-mode:hover:bg-red-900/30 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-red-50 dark-mode:disabled:hover:bg-red-900/20" aria-label="Stop recording" disabled>
+                        <span class="flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd"></path>
+                            </svg>
+                            <span>Stop</span>
+                        </span>
+                    </button>
+                    <button id="submit-btn" class="btn-primary text-white font-semibold px-6 py-2 rounded-[1.3rem] shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md flex-1 sm:flex-initial" aria-label="Submit answer" disabled>
+                        <span class="flex items-center gap-2 justify-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span>Submit Answer</span>
+                        </span>
+                    </button>
+                </div>
+                <canvas id="waveform" class="w-full h-16 bg-gray-200 dark-mode:bg-gray-700 rounded"></canvas>
+            </div>
+
+            <div class="mt-4">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-semibold text-gray-700 dark-mode:text-gray-300">Transcript</label>
+                    <span class="text-xs text-gray-500 dark-mode:text-gray-400">You can edit this text</span>
+                </div>
+                <textarea id="transcript" class="input-field input-field-light dark-mode:input-field-dark w-full px-4 py-3 border-2 border-gray-200 dark-mode:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 resize-y" rows="4" placeholder="Your transcribed answer will appear here... You can also type or edit manually."></textarea>
+                <p class="text-xs text-gray-500 dark-mode:text-gray-400 mt-1">💡 Tip: You can type your answer directly or edit the speech-to-text transcript</p>
+            </div>
+        </div>
+
+        <!-- Voice Analysis & Report -->
+        <div id="post-wrap" class="hidden card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg">
+            <h3 class="text-xl font-semibold mb-4 text-gray-800 dark-mode:text-gray-200">Voice Analysis</h3>
+            <ul class="list-disc pl-6 text-gray-700 dark-mode:text-gray-300" id="voice-feedback"></ul>
+            <div class="mt-6 flex gap-3">
+                <a href="{{ url_for('generate_report') }}" class="btn-primary text-white font-semibold px-6 py-2 rounded-[1.3rem]" aria-label="Download report">Download Report (PDF)</a>
+                <a href="{{ url_for('dashboard') }}" class="text-gray-700 dark-mode:text-gray-300 underline" aria-label="Back to dashboard">Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const startBtn = document.getElementById('start-btn');
+    const domainOptions = document.querySelectorAll('input[name="domain"]');
+    const domainError = document.getElementById('domain-error');
+    let selectedDomain = '';
+    const videoWrap = document.getElementById('video-wrap');
+    const videoPreview = document.getElementById('video-preview');
+    const recordingIndicator = document.getElementById('recording-indicator');
+    const startInterviewBtn = document.getElementById('start-interview-btn');
+    const endInterviewBtn = document.getElementById('end-interview-btn');
+    const progressWrap = document.getElementById('progress-wrap');
+    const progressBar = document.getElementById('progress-bar');
+    const progressLabel = document.getElementById('progress-label');
+    const questionCard = document.getElementById('question-card');
+    const questionText = document.getElementById('question-text');
+    const recordBtn = document.getElementById('record-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const submitBtn = document.getElementById('submit-btn');
+    const transcriptArea = document.getElementById('transcript');
+    const waveformCanvas = document.getElementById('waveform');
+    const postWrap = document.getElementById('post-wrap');
+
+    let recognition;
+    let audioCtx, analyser, dataArray, source, mediaStream;
+    let rafId;
+    let videoStream = null;
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let isRecording = false;
+    let recordingStartTime = null;
+    let currentSessionId = null;
+    let isAudioRecording = false;
+
+    // Update domain selection and start button state
+    function updateDomainSelection() {
+        const selected = document.querySelector('input[name="domain"]:checked');
+        selectedDomain = selected ? selected.value : '';
+        startBtn.disabled = !selectedDomain;
+        
+        if (selectedDomain) {
+            domainError.classList.add('hidden');
+        }
+    }
+
+    // Initialize domain selection listeners
+    domainOptions.forEach(option => {
+        option.addEventListener('change', updateDomainSelection);
+    });
+    
+    // Check initial state
+    updateDomainSelection();
+
+    // Update submit button state based on transcript
+    function updateSubmitButton() {
+        const hasAnswer = transcriptArea.value.trim().length > 0;
+        submitBtn.disabled = !hasAnswer || isAudioRecording;
+    }
+
+    // Listen to transcript changes (typing, editing, pasting)
+    transcriptArea.addEventListener('input', updateSubmitButton);
+    transcriptArea.addEventListener('paste', () => setTimeout(updateSubmitButton, 10));
+    transcriptArea.addEventListener('keyup', updateSubmitButton);
+    transcriptArea.addEventListener('change', updateSubmitButton);
+    
+    // Allow direct typing - make sure transcript is always editable
+    transcriptArea.readOnly = false;
+    
+    // Track if user is actively editing the transcript
+    let userIsEditingTranscript = false;
+    
+    transcriptArea.addEventListener('focus', () => {
+        userIsEditingTranscript = true;
+    });
+    
+    transcriptArea.addEventListener('blur', () => {
+        userIsEditingTranscript = false;
+    });
+    
+    // Track manual edits
+    transcriptArea.addEventListener('keydown', () => {
+        userIsEditingTranscript = true;
+    });
+
+    function drawWaveform() {
+        if (!analyser) return;
+        const canvasCtx = waveformCanvas.getContext('2d');
+        const width = waveformCanvas.width = waveformCanvas.clientWidth;
+        const height = waveformCanvas.height = waveformCanvas.clientHeight;
+        dataArray = new Uint8Array(analyser.fftSize);
+
+        function draw() {
+            rafId = requestAnimationFrame(draw);
+            analyser.getByteTimeDomainData(dataArray);
+            canvasCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--card-light') || '#eee';
+            canvasCtx.fillRect(0, 0, width, height);
+            canvasCtx.lineWidth = 2;
+            canvasCtx.strokeStyle = '#3b82f6';
+            canvasCtx.beginPath();
+            const sliceWidth = width / dataArray.length;
+            let x = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = (v * height) / 2;
+                if (i === 0) canvasCtx.moveTo(x, y);
+                else canvasCtx.lineTo(x, y);
+                x += sliceWidth;
+            }
+            canvasCtx.lineTo(width, height / 2);
+            canvasCtx.stroke();
+        }
+        draw();
+    }
+
+    async function getQuestion(domain, previousAnswer, questionId, startNew = false) {
+        const res = await fetch("{{ url_for('api_question') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ domain, previousAnswer, questionId, startNew })
+        });
+        if (!res.ok) throw new Error('Failed to fetch question');
+        const data = await res.json();
+        // Store session ID if available
+        if (data.sessionId) {
+            currentSessionId = data.sessionId;
+        }
+        return data;
+    }
+
+    function updateProgress(index, total) {
+        progressWrap.classList.remove('hidden');
+        const pct = Math.max(0, Math.min(100, Math.round((index / total) * 100)));
+        progressBar.style.width = pct + '%';
+        progressLabel.textContent = `${index}/${total}`;
+    }
+
+    // Video recording functions
+    async function startVideoPreview() {
+        try {
+            videoStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    facingMode: 'user'
+                }, 
+                audio: true 
+            });
+            videoPreview.srcObject = videoStream;
+            videoWrap.classList.remove('hidden');
+        } catch (e) {
+            console.error('Error accessing camera/microphone:', e);
+            alert('Could not access camera/microphone. Please check permissions.');
+        }
+    }
+
+    function stopVideoPreview() {
+        if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop());
+            videoStream = null;
+            videoPreview.srcObject = null;
+        }
+    }
+
+    async function startVideoRecording() {
+        if (!videoStream) {
+            await startVideoPreview();
+        }
+        
+        recordedChunks = [];
+        const options = { mimeType: 'video/webm;codecs=vp9,opus' };
+        
+        try {
+            mediaRecorder = new MediaRecorder(videoStream, options);
+        } catch (e) {
+            // Fallback to default codec
+            mediaRecorder = new MediaRecorder(videoStream);
+        }
+        
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+            }
+        };
+        
+        mediaRecorder.onstop = async () => {
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            await uploadVideo(blob);
+        };
+        
+        mediaRecorder.start();
+        isRecording = true;
+        recordingStartTime = Date.now();
+        recordingIndicator.classList.remove('hidden');
+        startInterviewBtn.classList.add('hidden');
+        endInterviewBtn.classList.remove('hidden');
+        endInterviewBtn.disabled = false;
+    }
+
+    function stopVideoRecording() {
+        if (mediaRecorder && isRecording) {
+            mediaRecorder.stop();
+            isRecording = false;
+            recordingIndicator.classList.add('hidden');
+            endInterviewBtn.disabled = true;
+        }
+    }
+
+    async function uploadVideo(blob) {
+        const formData = new FormData();
+        formData.append('video', blob, `interview_${Date.now()}.webm`);
+        formData.append('session_id', currentSessionId || '');
+        formData.append('domain', selectedDomain);
+        const duration = recordingStartTime ? (Date.now() - recordingStartTime) / 1000 : null;
+        if (duration) {
+            formData.append('duration', duration);
+        }
+        
+        try {
+            const response = await fetch("{{ url_for('upload_video') }}", {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            if (result.success) {
+                console.log('Video uploaded successfully:', result);
+            } else {
+                console.error('Video upload failed:', result);
+            }
+        } catch (e) {
+            console.error('Error uploading video:', e);
+        }
+    }
+
+    startBtn.addEventListener('click', async () => {
+        if (!selectedDomain) {
+            domainError.classList.remove('hidden');
+            return;
+        }
+        domainError.classList.add('hidden');
+        startBtn.disabled = true;
+        
+        // Start video preview
+        await startVideoPreview();
+        
+        try {
+            // Start a fresh interview session
+            const q = await getQuestion(selectedDomain, null, null, true);
+            currentSessionId = q.sessionId || null;
+            questionCard.classList.remove('hidden');
+            questionText.textContent = q.question;
+            updateProgress(q.index, q.total);
+            
+            // Reset button states for new question
+            recordBtn.disabled = false;
+            stopBtn.disabled = true;
+            submitBtn.disabled = true;
+            transcriptArea.value = '';
+            isAudioRecording = false;
+            
+            // Automatically start video recording when interview begins
+            await startVideoRecording();
+        } catch (e) {
+            alert('Could not start interview.');
+            startBtn.disabled = false;
+        }
+    });
+
+    startInterviewBtn.addEventListener('click', async () => {
+        await startVideoRecording();
+    });
+
+    endInterviewBtn.addEventListener('click', () => {
+        stopVideoRecording();
+        stopVideoPreview();
+    });
+
+    // Speech recognition via Web Speech API
+    function setupRecognition() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) return null;
+        const rec = new SpeechRecognition();
+        rec.continuous = true;
+        rec.interimResults = true;
+        rec.lang = 'en-US';
+        
+        rec.onresult = (e) => {
+            let finalText = '';
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+                const t = e.results[i][0].transcript;
+                if (e.results[i].isFinal) {
+                    finalText += t + ' ';
+                }
+            }
+            
+            // Append speech recognition results to transcript
+            // User can freely edit the textarea - speech recognition just appends
+            if (finalText) {
+                const currentValue = transcriptArea.value;
+                // Append new speech recognition results to existing text
+                // This allows users to edit while still getting speech-to-text updates
+                transcriptArea.value = (currentValue + ' ' + finalText).trim();
+                updateSubmitButton();
+            }
+        };
+        rec.onerror = () => {};
+        return rec;
+    }
+
+    async function startRecording() {
+        try {
+            isAudioRecording = true;
+            recognition = setupRecognition();
+            if (recognition) recognition.start();
+            mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 2048;
+            source = audioCtx.createMediaStreamSource(mediaStream);
+            source.connect(analyser);
+            drawWaveform();
+            
+            // Update button states
+            recordBtn.disabled = true;
+            stopBtn.disabled = false;
+            submitBtn.disabled = true; // Disable submit while recording
+        } catch (e) {
+            alert('Microphone access denied or not available.');
+            isAudioRecording = false;
+            recordBtn.disabled = false;
+            stopBtn.disabled = true;
+        }
+    }
+
+    function stopRecording() {
+        isAudioRecording = false;
+        if (recognition) { try { recognition.stop(); } catch(e){} }
+        if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+        if (rafId) cancelAnimationFrame(rafId);
+        if (audioCtx) audioCtx.close();
+        recognition = null; mediaStream = null; analyser = null; audioCtx = null;
+        
+        // Update button states
+        recordBtn.disabled = false;
+        stopBtn.disabled = true;
+        updateSubmitButton(); // Enable submit if there's text
+    }
+
+    recordBtn.addEventListener('click', async () => {
+        await startRecording();
+    });
+
+    stopBtn.addEventListener('click', () => {
+        stopRecording();
+    });
+
+    let currentQuestionId = null;
+
+    submitBtn.addEventListener('click', async () => {
+        const answer = transcriptArea.value.trim();
+        if (!answer) { 
+            alert('Please provide an answer.'); 
+            return; 
+        }
+        
+        // Disable submit button during processing
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+        
+        try {
+            // Stop any active recording
+            if (isAudioRecording) {
+                stopRecording();
+            }
+            
+            // Store answer and get next question
+            const next = await getQuestion(selectedDomain, answer, currentQuestionId);
+            currentQuestionId = next.questionId;
+            questionText.textContent = next.question;
+            updateProgress(next.index, next.total);
+            
+            // If interview is complete, stop recording and run analysis
+            if (next.index >= next.total) {
+                // Stop video recording if active
+                if (isRecording) {
+                    stopVideoRecording();
+                }
+                stopVideoPreview();
+                questionCard.classList.add('hidden');
+                videoWrap.classList.add('hidden');
+                
+                // Run voice analysis on the transcript
+                const analysisRes = await fetch("{{ url_for('api_voice_analysis') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ transcript: answer })
+                });
+                if (analysisRes.ok) {
+                    const fb = await analysisRes.json();
+                    postWrap.classList.remove('hidden');
+                    const ul = document.getElementById('voice-feedback');
+                    ul.innerHTML = '';
+                    ['clarity','confidence','tone'].forEach(k => {
+                        if (fb[k]) {
+                            const li = document.createElement('li');
+                            li.className = 'mb-2';
+                            li.innerHTML = `<strong>${k.charAt(0).toUpperCase() + k.slice(1)}:</strong> ${fb[k]}`;
+                            ul.appendChild(li);
+                        }
+                    });
+                    // Show scores if available
+                    if (fb.clarity_score) {
+                        const scoreDiv = document.createElement('div');
+                        scoreDiv.className = 'mt-4 text-sm text-gray-600 dark-mode:text-gray-400';
+                        scoreDiv.innerHTML = `Scores: Clarity ${fb.clarity_score}% | Confidence ${fb.confidence_score}% | Tone ${fb.tone_score}%`;
+                        ul.appendChild(scoreDiv);
+                    }
+                }
+            } else {
+                // Reset for next question
+                transcriptArea.value = '';
+                recordBtn.disabled = false;
+                stopBtn.disabled = true;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="flex items-center gap-2 justify-center"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Submit Answer</span></span>';
+            }
+        } catch (e) {
+            alert('Could not fetch next question.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span class="flex items-center gap-2 justify-center"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Submit Answer</span></span>';
+        }
+    });
+
+})();
+</script>
+{% endblock %}
