@@ -82,7 +82,6 @@
                 <video id="video-preview" autoplay muted playsinline class="w-full rounded-lg bg-gray-900" style="max-height: 400px;"></video>
             </div>
             <div class="flex gap-3">
-                <button id="start-interview-btn" class="btn-primary text-white font-semibold px-6 py-2 rounded-[1.3rem]" aria-label="Start interview recording">Start Interview</button>
                 <button id="end-interview-btn" class="hidden btn-secondary text-gray-700 dark-mode:text-gray-300 font-semibold px-6 py-2 rounded-[1.3rem] border border-gray-300 dark-mode:border-gray-600" aria-label="End interview recording" disabled>End Interview</button>
             </div>
         </div>
@@ -147,6 +146,7 @@
         <!-- Voice Analysis & Report -->
         <div id="post-wrap" class="hidden card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg">
             <h3 class="text-xl font-semibold mb-4 text-gray-800 dark-mode:text-gray-200">Voice Analysis</h3>
+            <h4 class="text-lg font-semibold mb-2 text-gray-600 dark-mode:text-gray-400">Congratulations! You have completed the interview.</h4>
             <ul class="list-disc pl-6 text-gray-700 dark-mode:text-gray-300" id="voice-feedback"></ul>
             <div class="mt-6 flex gap-3">
                 <a href="{{ url_for('generate_report') }}" class="btn-primary text-white font-semibold px-6 py-2 rounded-[1.3rem]" aria-label="Download report">Download Report (PDF)</a>
@@ -167,7 +167,6 @@
     const videoWrap = document.getElementById('video-wrap');
     const videoPreview = document.getElementById('video-preview');
     const recordingIndicator = document.getElementById('recording-indicator');
-    const startInterviewBtn = document.getElementById('start-interview-btn');
     const endInterviewBtn = document.getElementById('end-interview-btn');
     const progressWrap = document.getElementById('progress-wrap');
     const progressBar = document.getElementById('progress-bar');
@@ -351,7 +350,6 @@
         isRecording = true;
         recordingStartTime = Date.now();
         recordingIndicator.classList.remove('hidden');
-        startInterviewBtn.classList.add('hidden');
         endInterviewBtn.classList.remove('hidden');
         endInterviewBtn.disabled = false;
     }
@@ -425,10 +423,6 @@
         }
     });
 
-    startInterviewBtn.addEventListener('click', async () => {
-        await startVideoRecording();
-    });
-
     endInterviewBtn.addEventListener('click', () => {
         stopVideoRecording();
         stopVideoPreview();
@@ -452,12 +446,9 @@
                 }
             }
             
-            // Append speech recognition results to transcript
-            // User can freely edit the textarea - speech recognition just appends
-            if (finalText) {
+            // Only append transcript if user is not actively editing
+            if (finalText && !userIsEditingTranscript) {
                 const currentValue = transcriptArea.value;
-                // Append new speech recognition results to existing text
-                // This allows users to edit while still getting speech-to-text updates
                 transcriptArea.value = (currentValue + ' ' + finalText).trim();
                 updateSubmitButton();
             }
@@ -524,7 +515,7 @@
         
         // Disable submit button during processing
         submitBtn.disabled = true;
-        submitBtn.textContent = 'Submitting...';
+        submitBtn.innerHTML = '<span>Submitting...</span>';
         
         try {
             // Stop any active recording
