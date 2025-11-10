@@ -13,7 +13,7 @@
                 Interview Replay
             </h1>
             <p class="text-lg text-gray-600 dark-mode:text-gray-400">
-                {{ session.domain }} | {{ session.started_at.strftime('%B %d, %Y at %I:%M %p') if session.started_at else 'Date not available' }}
+                {{ interview_session.domain }} | {{ interview_session.started_at.strftime('%B %d, %Y at %I:%M %p') if interview_session.started_at else 'Date not available' }}
             </p>
         </div>
 
@@ -137,7 +137,7 @@
                         <h3 class="text-lg font-semibold text-gray-800 dark-mode:text-gray-200">
                             Question {{ loop.index }}
                         </h3>
-                        {% if attempt.is_correct is not None %}
+                        {% if attempt.is_correct is not none %}
                         <span class="px-3 py-1 rounded-full text-sm font-semibold {% if attempt.is_correct %}bg-green-100 text-green-800 dark-mode:bg-green-900 dark-mode:text-green-200{% else %}bg-red-100 text-red-800 dark-mode:bg-red-900 dark-mode:text-red-200{% endif %}">
                             {% if attempt.is_correct %}✓ Correct{% else %}✗ Incorrect{% endif %}
                         </span>
@@ -231,7 +231,7 @@
 
             <div class="mt-8 flex gap-3 justify-center">
                 <a 
-                    href="{{ url_for('generate_report', session_id=session.id) }}" 
+                    href="{{ url_for('generate_report', session_id=interview_session.id) }}" 
                     class="btn-primary text-white font-semibold py-3 px-6 rounded-[1.3rem] hover:shadow-lg transition-shadow"
                     aria-label="Download PDF report">
                     Download PDF Report

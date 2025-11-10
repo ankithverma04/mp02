@@ -66,26 +66,6 @@
             <p id="domain-error" class="text-red-500 text-sm mt-3 text-center hidden">Please select a domain to start the interview.</p>
         </div>
 
-        <!-- Video Preview & Recording -->
-        <div id="video-wrap" class="hidden card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg mb-6">
-            <div class="mb-4">
-                <div class="flex items-center justify-between mb-2">
-                    <h2 class="text-xl font-semibold text-gray-800 dark-mode:text-gray-200">Video Preview</h2>
-                    <div id="recording-indicator" class="hidden flex items-center gap-2">
-                        <span class="relative flex h-3 w-3">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                        </span>
-                        <span class="text-sm font-semibold text-red-600 dark-mode:text-red-400">Recording</span>
-                    </div>
-                </div>
-                <video id="video-preview" autoplay muted playsinline class="w-full rounded-lg bg-gray-900" style="max-height: 400px;"></video>
-            </div>
-            <div class="flex gap-3">
-                <button id="end-interview-btn" class="hidden btn-secondary text-gray-700 dark-mode:text-gray-300 font-semibold px-6 py-2 rounded-[1.3rem] border border-gray-300 dark-mode:border-gray-600" aria-label="End interview recording" disabled>End Interview</button>
-            </div>
-        </div>
-
         <!-- Progress Bar -->
         <div id="progress-wrap" class="hidden card-light dark-mode:card-dark p-4 rounded-2xl shadow mb-6">
             <div class="flex justify-between text-sm text-gray-600 dark-mode:text-gray-400 mb-2">
@@ -97,31 +77,89 @@
             </div>
         </div>
 
-        <!-- Question Card -->
-        <div id="question-card" class="hidden card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg mb-6">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800 dark-mode:text-gray-200">Question</h2>
-            <p id="question-text" class="text-gray-700 dark-mode:text-gray-300 mb-4"></p>
+        <!-- Interview Interface: Video and Question Side by Side -->
+        <div id="interview-interface" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Left Box: Video Preview (Static) -->
+            <div class="card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800 dark-mode:text-gray-200">Video Preview</h2>
+                    <div id="recording-indicator" class="hidden flex items-center gap-2">
+                        <span class="relative flex h-3 w-3">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                        </span>
+                        <span class="text-sm font-semibold text-red-600 dark-mode:text-red-400">Recording</span>
+                    </div>
+                </div>
+                
+                <!-- Video Container -->
+                <div class="relative w-full rounded-lg bg-gray-900 overflow-hidden" style="min-height: 300px; max-height: 500px;">
+                    <video id="video-preview" autoplay muted playsinline class="w-full h-full object-cover"></video>
+                    
+                    <!-- Video Error Message (shown inside the box) -->
+                    <div id="video-error" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-gray-800 text-white p-6">
+                        <svg class="w-16 h-16 mb-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        <p id="video-error-message" class="text-center text-lg font-semibold mb-2">Camera Not Found</p>
+                        <p class="text-center text-sm text-gray-300">Please check your camera permissions and try again.</p>
+                    </div>
+                </div>
+                
+                <div class="mt-4 flex justify-center">
+                    <button id="end-interview-btn" class="hidden btn-secondary text-gray-700 dark-mode:text-gray-300 font-semibold px-6 py-2 rounded-[1.3rem] border border-gray-300 dark-mode:border-gray-600" aria-label="End interview recording" disabled>End Interview</button>
+                </div>
+            </div>
 
-            <!-- Voice Controls -->
-            <div class="mt-4">
-                <div class="flex flex-wrap items-center gap-3 mb-3">
-                    <button id="record-btn" class="btn-primary text-white font-semibold px-6 py-2 rounded-[1.3rem] shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md" aria-label="Record your answer">
-                        <span class="flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"></path>
-                            </svg>
-                            <span>Start Speaking</span>
-                        </span>
-                    </button>
-                    <button id="stop-btn" class="px-6 py-2 rounded-[1.3rem] font-semibold border-2 border-red-300 dark-mode:border-red-700 text-red-600 dark-mode:text-red-400 bg-red-50 dark-mode:bg-red-900/20 hover:bg-red-100 dark-mode:hover:bg-red-900/30 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-red-50 dark-mode:disabled:hover:bg-red-900/20" aria-label="Stop recording" disabled>
-                        <span class="flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd"></path>
-                            </svg>
-                            <span>Stop</span>
-                        </span>
-                    </button>
-                    <button id="submit-btn" class="btn-primary text-white font-semibold px-6 py-2 rounded-[1.3rem] shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md flex-1 sm:flex-initial" aria-label="Submit answer" disabled>
+            <!-- Right Box: Question & Recording -->
+            <div id="question-card" class="hidden card-light dark-mode:card-dark p-6 rounded-2xl shadow-lg">
+                <!-- Bot Icon and Question -->
+                <div class="flex items-start gap-4 mb-6">
+                    <div class="flex-shrink-0 w-12 h-12 rounded-full bg-blue-100 dark-mode:bg-blue-900/30 flex items-center justify-center">
+                        <svg class="w-7 h-7 text-blue-600 dark-mode:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"></path>
+                            <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h2 class="text-xl font-semibold mb-2 text-gray-800 dark-mode:text-gray-200">Question</h2>
+                        <p id="question-text" class="text-gray-700 dark-mode:text-gray-300 text-lg leading-relaxed"></p>
+                    </div>
+                </div>
+
+                <!-- Recording Controls -->
+                <div class="mb-4">
+                    <div class="flex flex-wrap items-center gap-3 mb-3">
+                        <button id="record-btn" class="btn-primary text-white font-semibold px-6 py-2 rounded-[1.3rem] shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md" aria-label="Start recording">
+                            <span class="flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"></path>
+                                </svg>
+                                <span>Start Recording</span>
+                            </span>
+                        </button>
+                        <button id="stop-btn" class="px-6 py-2 rounded-[1.3rem] font-semibold border-2 border-red-300 dark-mode:border-red-700 text-red-600 dark-mode:text-red-400 bg-red-50 dark-mode:bg-red-900/20 hover:bg-red-100 dark-mode:hover:bg-red-900/30 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-red-50 dark-mode:disabled:hover:bg-red-900/20" aria-label="Stop recording" disabled>
+                            <span class="flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd"></path>
+                                </svg>
+                                <span>Stop</span>
+                            </span>
+                        </button>
+                    </div>
+                    <canvas id="waveform" class="w-full h-16 bg-gray-200 dark-mode:bg-gray-700 rounded"></canvas>
+                </div>
+
+                <!-- Transcript Area -->
+                <div class="mt-4">
+                    <label class="block text-sm font-semibold text-gray-700 dark-mode:text-gray-300 mb-2">Your Transcript</label>
+                    <textarea id="transcript" class="input-field input-field-light dark-mode:input-field-dark w-full px-4 py-3 border-2 border-gray-200 dark-mode:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 resize-y" rows="6" placeholder="Your transcribed answer will appear here as you speak..."></textarea>
+                    <p class="text-xs text-gray-500 dark-mode:text-gray-400 mt-2">💡 Your speech will be transcribed here automatically</p>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="mt-4">
+                    <button id="submit-btn" class="w-full btn-primary text-white font-semibold px-6 py-3 rounded-[1.3rem] shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md" aria-label="Submit answer" disabled>
                         <span class="flex items-center gap-2 justify-center">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -130,16 +168,6 @@
                         </span>
                     </button>
                 </div>
-                <canvas id="waveform" class="w-full h-16 bg-gray-200 dark-mode:bg-gray-700 rounded"></canvas>
-            </div>
-
-            <div class="mt-4">
-                <div class="flex items-center justify-between mb-2">
-                    <label class="block text-sm font-semibold text-gray-700 dark-mode:text-gray-300">Transcript</label>
-                    <span class="text-xs text-gray-500 dark-mode:text-gray-400">You can edit this text</span>
-                </div>
-                <textarea id="transcript" class="input-field input-field-light dark-mode:input-field-dark w-full px-4 py-3 border-2 border-gray-200 dark-mode:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 resize-y" rows="4" placeholder="Your transcribed answer will appear here... You can also type or edit manually."></textarea>
-                <p class="text-xs text-gray-500 dark-mode:text-gray-400 mt-1">💡 Tip: You can type your answer directly or edit the speech-to-text transcript</p>
             </div>
         </div>
 
@@ -149,7 +177,7 @@
             <h4 class="text-lg font-semibold mb-2 text-gray-600 dark-mode:text-gray-400">Congratulations! You have completed the interview.</h4>
             <ul class="list-disc pl-6 text-gray-700 dark-mode:text-gray-300" id="voice-feedback"></ul>
             <div class="mt-6 flex gap-3">
-                <a href="{{ url_for('generate_report') }}" class="btn-primary text-white font-semibold px-6 py-2 rounded-[1.3rem]" aria-label="Download report">Download Report (PDF)</a>
+                <a id="download-report-link" href="#" class="btn-primary text-white font-semibold px-6 py-2 rounded-[1.3rem]" aria-label="Download report">Download Report (PDF)</a>
                 <a href="{{ url_for('dashboard') }}" class="text-gray-700 dark-mode:text-gray-300 underline" aria-label="Back to dashboard">Back to Dashboard</a>
             </div>
         </div>
@@ -164,8 +192,10 @@
     const domainOptions = document.querySelectorAll('input[name="domain"]');
     const domainError = document.getElementById('domain-error');
     let selectedDomain = '';
-    const videoWrap = document.getElementById('video-wrap');
+    const interviewInterface = document.getElementById('interview-interface');
     const videoPreview = document.getElementById('video-preview');
+    const videoError = document.getElementById('video-error');
+    const videoErrorMessage = document.getElementById('video-error-message');
     const recordingIndicator = document.getElementById('recording-indicator');
     const endInterviewBtn = document.getElementById('end-interview-btn');
     const progressWrap = document.getElementById('progress-wrap');
@@ -190,12 +220,31 @@
     let recordingStartTime = null;
     let currentSessionId = null;
     let isAudioRecording = false;
+    let voiceWasUsed = false; // Track if voice recognition was actually used
 
     // Update domain selection and start button state
     function updateDomainSelection() {
         const selected = document.querySelector('input[name="domain"]:checked');
         selectedDomain = selected ? selected.value : '';
         startBtn.disabled = !selectedDomain;
+        
+        // Remove highlighting from all domain options
+        domainOptions.forEach(option => {
+            const label = option.closest('label.domain-option');
+            if (label) {
+                label.classList.remove('border-blue-500', 'bg-blue-50', 'dark-mode:bg-blue-900/20');
+                label.classList.add('border-gray-200', 'dark-mode:border-gray-700');
+            }
+        });
+        
+        // Add highlighting to selected domain
+        if (selected) {
+            const selectedLabel = selected.closest('label.domain-option');
+            if (selectedLabel) {
+                selectedLabel.classList.remove('border-gray-200', 'dark-mode:border-gray-700');
+                selectedLabel.classList.add('border-blue-500', 'bg-blue-50', 'dark-mode:bg-blue-900/20');
+            }
+        }
         
         if (selectedDomain) {
             domainError.classList.add('hidden');
@@ -296,6 +345,9 @@
     // Video recording functions
     async function startVideoPreview() {
         try {
+            // Hide any previous error
+            videoError.classList.add('hidden');
+            
             videoStream = await navigator.mediaDevices.getUserMedia({ 
                 video: { 
                     width: { ideal: 1280 },
@@ -305,10 +357,25 @@
                 audio: true 
             });
             videoPreview.srcObject = videoStream;
-            videoWrap.classList.remove('hidden');
+            videoError.classList.add('hidden');
         } catch (e) {
             console.error('Error accessing camera/microphone:', e);
-            alert('Could not access camera/microphone. Please check permissions.');
+            
+            // Show error inside the video box
+            let errorMsg = 'Camera Not Found';
+            if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+                errorMsg = 'Camera Permission Denied';
+            } else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError') {
+                errorMsg = 'Camera Not Found';
+            } else if (e.name === 'NotReadableError' || e.name === 'TrackStartError') {
+                errorMsg = 'Camera Already in Use';
+            } else {
+                errorMsg = 'Camera Error: ' + e.message;
+            }
+            
+            videoErrorMessage.textContent = errorMsg;
+            videoError.classList.remove('hidden');
+            videoPreview.srcObject = null;
         }
     }
 
@@ -397,6 +464,10 @@
         domainError.classList.add('hidden');
         startBtn.disabled = true;
         
+        // Show interview interface
+        interviewInterface.classList.remove('hidden');
+        questionCard.classList.remove('hidden');
+        
         // Start video preview
         await startVideoPreview();
         
@@ -404,7 +475,7 @@
             // Start a fresh interview session
             const q = await getQuestion(selectedDomain, null, null, true);
             currentSessionId = q.sessionId || null;
-            questionCard.classList.remove('hidden');
+            currentQuestionId = q.questionId; // Store the first question ID
             questionText.textContent = q.question;
             updateProgress(q.index, q.total);
             
@@ -414,9 +485,12 @@
             submitBtn.disabled = true;
             transcriptArea.value = '';
             isAudioRecording = false;
+            voiceWasUsed = false; // Reset voice tracking for new interview
             
-            // Automatically start video recording when interview begins
-            await startVideoRecording();
+            // Automatically start video recording when interview begins (only if video stream is available)
+            if (videoStream) {
+                await startVideoRecording();
+            }
         } catch (e) {
             alert('Could not start interview.');
             startBtn.disabled = false;
@@ -443,6 +517,7 @@
                 const t = e.results[i][0].transcript;
                 if (e.results[i].isFinal) {
                     finalText += t + ' ';
+                    voiceWasUsed = true; // Mark that voice recognition was used
                 }
             }
             
@@ -475,6 +550,8 @@
             stopBtn.disabled = false;
             submitBtn.disabled = true; // Disable submit while recording
         } catch (e) {
+            // Note: Microphone errors are not shown in video box, only camera errors
+            console.error('Microphone error:', e);
             alert('Microphone access denied or not available.');
             isAudioRecording = false;
             recordBtn.disabled = false;
@@ -525,25 +602,27 @@
             
             // Store answer and get next question
             const next = await getQuestion(selectedDomain, answer, currentQuestionId);
-            currentQuestionId = next.questionId;
-            questionText.textContent = next.question;
-            updateProgress(next.index, next.total);
             
-            // If interview is complete, stop recording and run analysis
-            if (next.index >= next.total) {
+            // Check if interview is complete (no more questions)
+            if (next.completed || !next.question) {
+                // Interview is complete - show completion message
                 // Stop video recording if active
                 if (isRecording) {
                     stopVideoRecording();
                 }
                 stopVideoPreview();
+                interviewInterface.classList.add('hidden');
                 questionCard.classList.add('hidden');
-                videoWrap.classList.add('hidden');
                 
-                // Run voice analysis on the transcript
+                // Run voice analysis on the entire interview session
                 const analysisRes = await fetch("{{ url_for('api_voice_analysis') }}", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ transcript: answer })
+                    body: JSON.stringify({ 
+                        transcript: answer,
+                        session_id: currentSessionId || next.sessionId,
+                        voice_used: voiceWasUsed // Pass flag indicating if voice was actually used
+                    })
                 });
                 if (analysisRes.ok) {
                     const fb = await analysisRes.json();
@@ -558,15 +637,34 @@
                             ul.appendChild(li);
                         }
                     });
-                    // Show scores if available
-                    if (fb.clarity_score) {
+                    // Show scores if available and voice was used
+                    if (fb.clarity_score && fb.clarity_score > 0) {
                         const scoreDiv = document.createElement('div');
                         scoreDiv.className = 'mt-4 text-sm text-gray-600 dark-mode:text-gray-400';
                         scoreDiv.innerHTML = `Scores: Clarity ${fb.clarity_score}% | Confidence ${fb.confidence_score}% | Tone ${fb.tone_score}%`;
                         ul.appendChild(scoreDiv);
                     }
+                    
+                    // Show overall feedback from Gemini if available
+                    if (fb.overall_feedback) {
+                        const overallDiv = document.createElement('div');
+                        overallDiv.className = 'mt-6 p-4 bg-blue-50 dark-mode:bg-blue-900/20 rounded-lg border-l-4 border-blue-500';
+                        overallDiv.innerHTML = `<h5 class="font-semibold text-gray-800 dark-mode:text-gray-200 mb-2">Overall Interview Feedback:</h5><p class="text-gray-700 dark-mode:text-gray-300">${fb.overall_feedback}</p>`;
+                        ul.appendChild(overallDiv);
+                    }
+                    
+                    // Update download report link with session ID
+                    const reportLink = document.getElementById('download-report-link');
+                    if (reportLink && (currentSessionId || next.sessionId)) {
+                        reportLink.href = `{{ url_for('generate_report') }}?session_id=${currentSessionId || next.sessionId}`;
+                    }
                 }
             } else {
+                // Show next question (including the last one)
+                currentQuestionId = next.questionId;
+                questionText.textContent = next.question;
+                updateProgress(next.index, next.total);
+                
                 // Reset for next question
                 transcriptArea.value = '';
                 recordBtn.disabled = false;

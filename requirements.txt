@@ -11,9 +11,15 @@ numpy>=1.24.0
 sentence-transformers==2.2.2
 language-tool-python==2.7.1
 nltk==3.8.1
-deepface==0.0.79
-pandas>=2.0.0,<3.0.0
-tensorflow>=2.13.0,<3.0.0
 setuptools>=65.0.0
-spacy==3.7.2
+pandas>=2.0.0
 
+# NOTE: The following packages are incompatible with Python 3.14:
+# - They require Python 3.12 or lower, OR
+# - They require Microsoft Visual C++ Build Tools to compile from source
+# To install these, either:
+# 1. Use Python 3.12 or lower, OR
+# 2. Install Microsoft C++ Build Tools from: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+# spacy>=3.7.2
+# tensorflow>=2.15.0
+# deepface==0.0.79

@@ -5,7 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import re
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 import io
 import json
@@ -20,13 +20,30 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-    'DATABASE_URL', 
-    'sqlite:///interview_platform.db'
-)
+database_url = os.getenv('DATABASE_URL', 'sqlite:///interview_platform.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads', 'videos')
+
+# Configure connection pool for PostgreSQL to handle SSL and connection timeouts
+if database_url.startswith('postgresql'):
+    # Parse existing SSL mode from URL if present, otherwise default to require
+    import urllib.parse
+    parsed = urllib.parse.urlparse(database_url)
+    query_params = urllib.parse.parse_qs(parsed.query)
+    ssl_mode = query_params.get('sslmode', ['require'])[0] if query_params.get('sslmode') else 'require'
+    
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_pre_ping': True,  # Verify connections before using them (reconnects if closed)
+        'pool_recycle': 300,     # Recycle connections after 5 minutes
+        'pool_size': 5,          # Number of connections to maintain
+        'max_overflow': 10,      # Maximum overflow connections
+        'connect_args': {
+            'connect_timeout': 10,  # Connection timeout in seconds
+            'sslmode': ssl_mode      # Use SSL mode from URL or default to require
+        }
+    }
 
 # Ensure upload directories exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -44,6 +61,13 @@ def from_json_filter(value):
         except (json.JSONDecodeError, TypeError):
             return None
     return value
+
+# Ensure Flask's session is always available in templates (even if shadowed)
+@app.context_processor
+def inject_session():
+    """Make Flask's session available in all templates"""
+    from flask import session as flask_session
+    return {'flask_session': flask_session}
 
 
 class User(db.Model):
@@ -65,7 +89,7 @@ class Interview(db.Model):
     total_questions = db.Column(db.Integer, nullable=False, default=0)
     correct_answers = db.Column(db.Integer, nullable=False, default=0)
     performance_summary = db.Column(db.Text, nullable=True)  # Brief performance feedback
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     def __repr__(self):
         return f'<Interview {self.id} - {self.domain}>'
@@ -82,7 +106,7 @@ class InterviewSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     domain = db.Column(db.String(50), nullable=False)
-    started_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    started_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     completed_at = db.Column(db.DateTime, nullable=True)
     current_index = db.Column(db.Integer, nullable=False, default=0)
     total_questions = db.Column(db.Integer, nullable=False, default=5)
@@ -95,7 +119,7 @@ class QuestionAttempt(db.Model):
     correct_answer = db.Column(db.Text, nullable=True)
     user_answer = db.Column(db.Text, nullable=True)
     is_correct = db.Column(db.Boolean, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     voice_clarity_score = db.Column(db.Float, nullable=True)
     voice_confidence_score = db.Column(db.Float, nullable=True)
     voice_tone_analysis = db.Column(db.Text, nullable=True)
@@ -113,8 +137,8 @@ class UserSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
     email_notifications = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class InterviewVideo(db.Model):
@@ -128,7 +152,7 @@ class InterviewVideo(db.Model):
     file_size = db.Column(db.Integer, nullable=True)  # File size in bytes
     emotion_analysis = db.Column(db.Text, nullable=True)  # JSON string with emotion data
     engagement_score = db.Column(db.Float, nullable=True)  # Overall engagement score 0-10
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     
     user_rel = db.relationship('User', backref='videos')
     session_rel = db.relationship('InterviewSession', backref='videos')
@@ -183,6 +207,90 @@ def validate_password(password):
     return True, ""
 
 
+def evaluate_answer_with_gemini(model_answer: str, candidate_answer: str) -> dict:
+    """
+    Evaluate candidate answer using Gemini AI.
+    Returns dict with score (0-100) and feedback.
+    """
+    client = _configure_gemini()
+    if not client:
+        return {
+            'score': 0,
+            'feedback': 'Gemini API not available for evaluation.'
+        }
+    
+    prompt = f"""You are an expert technical interviewer evaluating a candidate's answer.
+
+Expected Answer: "{model_answer}"
+
+Candidate's Answer: "{candidate_answer}"
+
+Evaluate the candidate's answer and provide:
+1. A score from 0-100 based on:
+   - Accuracy and correctness (40%)
+   - Completeness and detail (30%)
+   - Clarity and communication (20%)
+   - Understanding demonstrated (10%)
+2. Constructive feedback (1-2 sentences)
+
+Be lenient with scoring:
+- Give partial credit for partial understanding
+- Reward honest "I don't know" responses with at least 30-40 points
+- Don't penalize minimal answers too harshly if they're correct
+- Focus on whether the core concept is understood
+
+Return ONLY a JSON object with this exact format:
+{{
+    "score": <number 0-100>,
+    "feedback": "<constructive feedback message>"
+}}
+
+IMPORTANT: Return ONLY valid JSON. No markdown, no code blocks, just the JSON object."""
+    
+    try:
+        import json as _json
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        generation_config = {
+            'temperature': 0.3,  # Low temperature for consistent evaluation
+            'max_output_tokens': 200,
+        }
+        resp = model.generate_content(prompt, generation_config=generation_config)
+        text = resp.text.strip()
+        
+        # Remove markdown code blocks if present
+        if '```json' in text:
+            text = text.split('```json')[1].split('```')[0].strip()
+        elif '```' in text:
+            text = text.split('```')[1].split('```')[0].strip()
+        
+        # Extract JSON
+        if '{' in text and '}' in text:
+            json_str = text[text.find('{'):text.rfind('}')+1]
+            data = _json.loads(json_str)
+            
+            score = float(data.get('score', 0))
+            feedback = data.get('feedback', 'No feedback provided.')
+            
+            # Ensure score is in valid range
+            score = max(0, min(100, score))
+            
+            return {
+                'score': round(score, 1),
+                'feedback': feedback
+            }
+    except Exception as e:
+        # Fallback: return neutral score
+        return {
+            'score': 50,
+            'feedback': 'Unable to evaluate with Gemini. Using alternative method.'
+        }
+    
+    return {
+        'score': 50,
+        'feedback': 'Unable to evaluate with Gemini. Using alternative method.'
+    }
+
+
 def evaluate_answer_with_nlp(model_answer: str, candidate_answer: str) -> dict:
     """
     Evaluate candidate answer using NLP techniques:
@@ -208,6 +316,32 @@ def evaluate_answer_with_nlp(model_answer: str, candidate_answer: str) -> dict:
         'final_score': 0,
         'feedback': ''
     }
+    
+    # Check for "I don't know" or similar honest responses
+    candidate_lower = candidate_answer.lower().strip()
+    dont_know_phrases = [
+        "i don't know", "i don't", "i do not know", "i do not", 
+        "don't know", "do not know", "not sure", "unsure",
+        "i'm not sure", "i am not sure", "no idea", "have no idea",
+        "unfamiliar", "not familiar", "haven't learned", "have not learned"
+    ]
+    
+    is_honest_response = any(phrase in candidate_lower for phrase in dont_know_phrases)
+    
+    # For honest "I don't know" responses, be more lenient
+    if is_honest_response:
+        # Give partial credit for honesty and clear communication
+        results['keyword_score'] = 30  # Some credit for being honest
+        results['semantic_score'] = 40  # Partial credit for clear communication
+        results['grammar_score'] = 90   # Good grammar for honest responses
+        results['final_score'] = round(
+            results['keyword_score'] * 0.3 +
+            results['semantic_score'] * 0.5 +
+            results['grammar_score'] * 0.2,
+            1
+        )
+        results['feedback'] = "Thank you for being honest. It's better to admit when you don't know something rather than guess. Consider reviewing this topic to strengthen your understanding."
+        return results
     
     # Step 1: Keyword Matching (30% weight)
     try:
@@ -235,6 +369,9 @@ def evaluate_answer_with_nlp(model_answer: str, candidate_answer: str) -> dict:
         if model_words:
             matched_keywords = model_words.intersection(candidate_words)
             keyword_score = (len(matched_keywords) / len(model_words)) * 100
+            # More lenient: give minimum 20% credit if any keywords match
+            if len(matched_keywords) > 0:
+                keyword_score = max(keyword_score, 20)
             results['keyword_score'] = round(keyword_score, 1)
         else:
             results['keyword_score'] = 50  # Default if no keywords found
@@ -246,7 +383,11 @@ def evaluate_answer_with_nlp(model_answer: str, candidate_answer: str) -> dict:
         candidate_words = set(w for w in candidate_lower.split() if len(w) > 3)
         if model_words:
             matched = model_words.intersection(candidate_words)
-            results['keyword_score'] = round((len(matched) / len(model_words)) * 100, 1)
+            keyword_score = round((len(matched) / len(model_words)) * 100, 1)
+            # More lenient: give minimum 20% credit if any keywords match
+            if len(matched) > 0:
+                keyword_score = max(keyword_score, 20)
+            results['keyword_score'] = keyword_score
         else:
             results['keyword_score'] = 50
     
@@ -265,6 +406,9 @@ def evaluate_answer_with_nlp(model_answer: str, candidate_answer: str) -> dict:
         embeddings = model.encode([model_answer, candidate_answer], convert_to_tensor=True)
         similarity = util.pytorch_cos_sim(embeddings[0], embeddings[1])
         semantic_score = float(similarity) * 100
+        # More lenient: give minimum 25% credit for any semantic similarity
+        if semantic_score > 0:
+            semantic_score = max(semantic_score, 25)
         results['semantic_score'] = round(semantic_score, 1)
     except (ImportError, Exception) as e:
         # Fallback: simple similarity based on common words
@@ -302,26 +446,32 @@ def evaluate_answer_with_nlp(model_answer: str, candidate_answer: str) -> dict:
     )
     results['final_score'] = round(final_score, 1)
     
-    # Step 5: Generate feedback
-    if final_score >= 85:
-        results['feedback'] = "Excellent! Your answer is clear, accurate, and well-structured."
-    elif final_score >= 70:
-        results['feedback'] = "Good answer! You covered the main points, but could add more detail or examples."
+    # Step 5: Generate feedback (more lenient and encouraging)
+    if final_score >= 75:
+        results['feedback'] = "Excellent! Your answer demonstrates good understanding of the concept."
     elif final_score >= 60:
-        results['feedback'] = "Fair answer. You're on the right track, but missed some important concepts. Try to be more specific."
-    elif final_score >= 50:
-        results['feedback'] = "Needs improvement. Your answer touches on the topic but lacks key details. Review the concept and try again."
+        results['feedback'] = "Good answer! You've covered the main points well. Consider adding more examples or details to strengthen your response."
+    elif final_score >= 45:
+        results['feedback'] = "Fair answer. You're on the right track! Try to include more specific details or examples to improve your explanation."
+    elif final_score >= 30:
+        results['feedback'] = "Your answer shows some understanding of the topic. Review the key concepts and try to provide more comprehensive details."
     else:
-        results['feedback'] = "Incorrect or incomplete answer. Please review the concept and provide a more comprehensive explanation."
+        results['feedback'] = "Your answer needs more detail. Consider reviewing the concept and explaining it in your own words with examples."
     
-    # Add specific feedback based on individual scores
+    # Add specific feedback based on individual scores (more lenient thresholds)
     feedback_details = []
-    if results['keyword_score'] < 60:
-        feedback_details.append("Consider including more key terms from the question.")
-    if results['semantic_score'] < 60:
-        feedback_details.append("Your answer doesn't fully capture the meaning. Try explaining the concept more clearly.")
-    if results['grammar_score'] < 80:
-        feedback_details.append("Pay attention to grammar and sentence structure.")
+    if results['keyword_score'] < 40:
+        feedback_details.append("Try to include more relevant key terms in your answer.")
+    elif results['keyword_score'] < 60:
+        feedback_details.append("You could include a few more key terms to strengthen your answer.")
+    
+    if results['semantic_score'] < 40:
+        feedback_details.append("Your answer could better capture the main concept. Try explaining it more clearly.")
+    elif results['semantic_score'] < 60:
+        feedback_details.append("Your explanation is getting there - try to be more specific about the key points.")
+    
+    if results['grammar_score'] < 70:
+        feedback_details.append("Pay attention to grammar and sentence structure to improve clarity.")
     
     if feedback_details:
         results['feedback'] += " " + " ".join(feedback_details)
@@ -382,8 +532,11 @@ def signup():
             new_user = User(name=name, email=email, password_hash=password_hash)
             db.session.add(new_user)
             db.session.commit()
-            flash('Account created successfully! Please sign in.', 'success')
-            return redirect(url_for('signin'))
+            flash('Account created successfully.', 'success')
+            session['user_id'] = user.id
+            session['user_name'] = user.name
+            session['user_email'] = user.email
+            return redirect(url_for('dashboard'))
         except Exception as e:
             db.session.rollback()
             flash('An error occurred. Please try again.', 'error')
@@ -422,7 +575,7 @@ def signin():
             session['user_id'] = user.id
             session['user_name'] = user.name
             session['user_email'] = user.email
-            flash(f'Welcome back, {user.name}!', 'success')
+            flash(f'Welcome , {user.name}!', 'success')
             return redirect(url_for('dashboard'))
         else:
             flash('Incorrect email or password', 'error')
@@ -439,7 +592,7 @@ def dashboard():
         return redirect(url_for('signin'))
     
     user_id = session.get('user_id')
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     
     if not user:
         session.clear()
@@ -553,7 +706,7 @@ def profile():
         flash('Please sign in to view your profile', 'error')
         return redirect(url_for('signin'))
 
-    user = User.query.get(session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user:
         session.clear()
         flash('User not found. Please sign in again.', 'error')
@@ -615,37 +768,90 @@ def _configure_gemini():
     api_key = os.getenv('GEMINI_API_KEY')
     if genai and api_key:
         genai.configure(api_key=api_key)
+        print("Gemini API key configured")
         return genai
     return None
 
 
 def _generate_question_with_gemini(domain: str, prev_answer: str | None = None, difficulty: str | None = None, index: int | None = None, asked_questions: list = None) -> dict:
-    """Generate a question using Gemini (stubbed fallback if no API key)."""
+    """Generate a beginner-friendly, easy-level technical interview question using Gemini."""
     if asked_questions is None:
         asked_questions = []
     
+    # Always use easy difficulty for beginner-friendly questions
+    difficulty = 'easy'
+    
     client = _configure_gemini()
-    prompt = f"Generate a single {domain} technical interview question. Provide JSON with fields: question, answer."
+    
+    # Build comprehensive prompt following the guidelines
+    prompt = f"""You are an assistant for generating beginner-friendly, easy-level technical interview questions for {domain.upper()}.
+
+Generate ONE easy-level interview question in {domain}. Follow these rules strictly:
+
+1. Difficulty: ONLY easy level. Avoid medium or hard questions.
+2. Question Style: Clear, simple, and practical. Focus on basic syntax, operations, and simple concepts.
+3. Avoid Repetition: Do NOT repeat these questions: {', '.join(asked_questions[:5]) if asked_questions else 'None'}"""
+    
     if prev_answer:
-        prompt += f" Consider the previous answer: {prev_answer}. Adjust difficulty accordingly."
-    if asked_questions:
-        prompt += f" Avoid these questions already asked: {', '.join(asked_questions[:3])}."
+        prompt += f"""
+4. Context-sensitive: The previous answer was: "{prev_answer}". If it contains misconceptions, generate a related question to correct it. Otherwise, generate a follow-up question that builds on it."""
+    
+    prompt += f"""
+
+Return a well-formed JSON object with these EXACT fields:
+- "question_id": a unique identifier (e.g., "{domain[:2]}-easy-001")
+- "domain": "{domain}"
+- "difficulty": "easy"
+- "question": the interview question (clear, practical, and easy to answer)
+- "answer": a short, concise answer (can include a code snippet if appropriate)
+- "explanation": 1-3 sentences explaining why the answer is correct
+- "hints": Optional array with 0-3 hints (or empty array [])
+- "tags": Optional array of 1-3 tags (e.g., ['lists', 'syntax'])
+- "example_input": Optional. Small example input if relevant
+- "example_output": Optional. Corresponding output if relevant
+
+IMPORTANT: Return ONLY valid JSON. No markdown, no code blocks, just the JSON object."""
+    
     if client:
-        try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            if difficulty:
-                prompt = f"{prompt} Difficulty: {difficulty}."
-            resp = model.generate_content(prompt)
-            text = resp.text.strip()
-            # Very naive parse fallback; ideally use a JSON prompt and parse safely
-            if '{' in text and '}' in text:
-                json_str = text[text.find('{'):text.rfind('}')+1]
-                import json as _json
-                data = _json.loads(json_str)
-                return { 'question': data.get('question', 'Question unavailable.'), 'answer': data.get('answer') }
-        except Exception:
-            pass
-    # Fallback static question pools per domain with simple difficulty bands
+        import json as _json
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                generation_config = {
+                    'temperature': 0.2,  # Low temperature for deterministic output
+                    'max_output_tokens': 400,  # Optimal response size
+                }
+                resp = model.generate_content(prompt, generation_config=generation_config)
+                text = resp.text.strip()
+                
+                # Remove markdown code blocks if present
+                if '```json' in text:
+                    text = text.split('```json')[1].split('```')[0].strip()
+                elif '```' in text:
+                    text = text.split('```')[1].split('```')[0].strip()
+                
+                # Extract JSON
+                if '{' in text and '}' in text:
+                    json_str = text[text.find('{'):text.rfind('}')+1]
+                    data = _json.loads(json_str)
+                    
+                    # Validate and extract required fields
+                    result = {
+                        'question': data.get('question', 'Question unavailable.'),
+                        'answer': data.get('answer', 'Answer unavailable.')
+                    }
+                    
+                    # Return the full structured data if available
+                    if 'question_id' in data and 'domain' in data:
+                        return result  # For now, return simplified format for compatibility
+                    return result
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    # Last attempt failed, fall through to fallback
+                    pass
+                continue
+    # Fallback static question pools - only easy questions for beginner-friendly interviews
     pools = {
         'python': {
             'easy': [
@@ -654,20 +860,11 @@ def _generate_question_with_gemini(domain: str, prev_answer: str | None = None, 
                 ('What is a dictionary in Python?', 'A key-value data structure, mutable and unordered.'),
                 ('Explain Python indentation.', 'Python uses indentation to define code blocks instead of braces.'),
                 ('What is PEP 8?', 'Python Enhancement Proposal 8 - style guide for Python code.'),
-            ],
-            'medium': [
-                ('Explain list vs tuple in Python with use-cases.', 'Tuples are immutable, lists are mutable; tuples for fixed records, lists for dynamic collections.'),
-                ('What is a generator and yield? Provide an example use-case.', 'Generators lazily produce values with yield; used for streaming/large data.'),
-                ('What are decorators in Python?', 'Functions that modify other functions, using @syntax.'),
-                ('Explain *args and **kwargs.', '*args for variable positional arguments, **kwargs for keyword arguments.'),
-                ('What is list comprehension?', 'Concise way to create lists: [x*2 for x in range(10)].'),
-            ],
-            'hard': [
-                ('How does the GIL affect multi-threading in CPython?', 'GIL allows only one bytecode thread at a time; use multiprocessing or I/O-bound threads.'),
-                ('When to use dataclasses vs attrs vs pydantic?', 'Dataclasses for simple data containers, attrs for more features, pydantic for validation.'),
-                ('Explain Python\'s memory management and garbage collection.', 'Uses reference counting and cyclic garbage collector.'),
-                ('What are metaclasses in Python?', 'Classes that create classes; used for advanced class customization.'),
-                ('Explain context managers and the with statement.', 'Manages resources automatically; uses __enter__ and __exit__ methods.'),
+                ('What is a variable in Python?', 'A named location in memory that stores a value.'),
+                ('How do you print something in Python?', 'Use the print() function: print("Hello, World!")'),
+                ('What is a string in Python?', 'A sequence of characters enclosed in quotes (single or double).'),
+                ('What is the difference between == and = in Python?', '= is for assignment, == is for comparison.'),
+                ('What is a function in Python?', 'A reusable block of code defined with the def keyword.'),
             ],
         },
         'java': {
@@ -677,20 +874,11 @@ def _generate_question_with_gemini(domain: str, prev_answer: str | None = None, 
                 ('What is an object in Java?', 'An instance of a class with state and behavior.'),
                 ('Explain Java access modifiers.', 'public, private, protected, and default (package-private).'),
                 ('What is inheritance in Java?', 'Mechanism where a class inherits properties and methods from another class.'),
-            ],
-            'medium': [
-                ('Difference between interface and abstract class?', 'Interfaces define contracts; abstract classes can have state and common behavior.'),
-                ('Explain JVM, JRE, JDK differences.', 'JVM runs bytecode; JRE = JVM + libs; JDK = JRE + tools.'),
-                ('What is method overriding vs overloading?', 'Overriding: same signature in subclass; Overloading: same name, different parameters.'),
-                ('Explain Java collections framework.', 'Set of classes and interfaces for storing and manipulating groups of objects.'),
-                ('What are exceptions in Java?', 'Events that disrupt normal flow; handled with try-catch blocks.'),
-            ],
-            'hard': [
-                ('Describe Java memory model and happens-before.', 'Defines concurrency rules; happens-before ensures visibility and ordering.'),
-                ('Compare Parallel, CMS, and G1 collectors.', 'Different GC algorithms with trade-offs in pause times and throughput.'),
-                ('Explain Java generics and type erasure.', 'Type parameters for classes/methods; erased at compile time for backward compatibility.'),
-                ('What is the volatile keyword?', 'Ensures variable visibility across threads; prevents caching.'),
-                ('Explain Java reflection API.', 'Runtime inspection and manipulation of classes, methods, and fields.'),
+                ('What is a variable in Java?', 'A named memory location that stores data of a specific type.'),
+                ('What is the difference between int and Integer in Java?', 'int is a primitive type, Integer is a wrapper class.'),
+                ('How do you declare an array in Java?', 'int[] arr = new int[5]; or int[] arr = {1, 2, 3};'),
+                ('What is a method in Java?', 'A function defined within a class that performs a specific task.'),
+                ('What is the String class in Java?', 'A class that represents a sequence of characters and is immutable.'),
             ],
         },
         'sql': {
@@ -700,38 +888,24 @@ def _generate_question_with_gemini(domain: str, prev_answer: str | None = None, 
                 ('What is a foreign key?', 'A column that references the primary key of another table.'),
                 ('Explain SELECT statement.', 'Used to query data from database tables.'),
                 ('What is normalization?', 'Process of organizing data to reduce redundancy and improve integrity.'),
-            ],
-            'medium': [
-                ('Write SQL to find the second highest salary.', 'SELECT MAX(salary) FROM t WHERE salary < (SELECT MAX(salary) FROM t);'),
-                ('Explain INNER vs LEFT JOIN with an example.', 'INNER returns matches; LEFT keeps all left rows with nulls for missing right.'),
-                ('What is a subquery?', 'A query nested inside another query.'),
-                ('Explain GROUP BY clause.', 'Groups rows with same values into summary rows.'),
-                ('What is an index in SQL?', 'Database structure that improves speed of data retrieval.'),
-            ],
-            'hard': [
-                ('When to use window functions? Example with ROW_NUMBER.', 'Use for analytics over partitions; SELECT ROW_NUMBER() OVER(PARTITION BY d ORDER BY x).'),
-                ('Explain transaction isolation levels and anomalies.', 'Read uncommitted..serializable; prevents dirty/non-repeatable/phantom reads.'),
-                ('What is ACID in database transactions?', 'Atomicity, Consistency, Isolation, Durability - transaction properties.'),
-                ('Explain SQL query optimization techniques.', 'Indexing, query rewriting, execution plan analysis, and statistics.'),
-                ('What are stored procedures?', 'Precompiled SQL statements stored in the database for reuse.'),
+                ('What is a table in SQL?', 'A collection of related data organized in rows and columns.'),
+                ('What is the INSERT statement used for?', 'To add new rows of data into a table.'),
+                ('What is the UPDATE statement used for?', 'To modify existing data in a table.'),
+                ('What is the DELETE statement used for?', 'To remove rows from a table.'),
+                ('What is a database?', 'An organized collection of structured data stored electronically.'),
             ],
         },
     }
+    
     d = domain.lower()
     if d not in pools:
-        return { 'question': 'Describe Big-O of binary search.', 'answer': 'O(log n)' }
-    # Choose difficulty based on provided difficulty or index progression
-    if not difficulty and index is not None:
-        if index <= 1:
-            difficulty = 'easy'
-        elif index <= 3:
-            difficulty = 'medium'
-        else:
-            difficulty = 'hard'
-    difficulty = difficulty or 'medium'
+        return { 'question': 'What is a variable?', 'answer': 'A named location in memory that stores a value.' }
     
-    # Get available questions for this difficulty level
-    available_questions = pools[d][difficulty]
+    # Always use easy difficulty for beginner-friendly questions
+    difficulty = 'easy'
+    
+    # Get available questions for easy difficulty level
+    available_questions = pools[d].get(difficulty, [])
     
     # Filter out already asked questions
     if asked_questions:
@@ -739,7 +913,11 @@ def _generate_question_with_gemini(domain: str, prev_answer: str | None = None, 
     
     # If all questions have been asked, reset and use all questions
     if not available_questions:
-        available_questions = pools[d][difficulty]
+        available_questions = pools[d].get(difficulty, [])
+    
+    # If still no questions, use a generic fallback
+    if not available_questions:
+        return { 'question': f'Explain the basics of {domain}.', 'answer': f'{domain} is a programming language/database system.' }
     
     import random
     q, a = random.choice(available_questions)
@@ -762,23 +940,55 @@ def api_question():
 
     # Store previous answer if provided
     if prev_answer and question_id:
-        attempt = QuestionAttempt.query.get(question_id)
+        attempt = db.session.get(QuestionAttempt, question_id)
         if attempt and attempt.session_id in [s.id for s in InterviewSession.query.filter_by(user_id=session['user_id']).all()]:
             attempt.user_answer = prev_answer
             
-            # Evaluate answer using NLP
+            # Evaluate answer using both NLP and Gemini, then take the maximum score
             if attempt.correct_answer:
-                nlp_results = evaluate_answer_with_nlp(attempt.correct_answer, prev_answer)
+                # Check if this is an "I don't know" response
+                candidate_lower = prev_answer.lower().strip()
+                dont_know_phrases = [
+                    "i don't know", "i don't", "i do not know", "i do not", 
+                    "don't know", "do not know", "not sure", "unsure",
+                    "i'm not sure", "i am not sure", "no idea", "have no idea",
+                    "unfamiliar", "not familiar", "haven't learned", "have not learned"
+                ]
+                is_honest_response = any(phrase in candidate_lower for phrase in dont_know_phrases)
                 
-                # Store NLP scores
+                # Run both evaluation methods
+                nlp_results = evaluate_answer_with_nlp(attempt.correct_answer, prev_answer)
+                gemini_results = evaluate_answer_with_gemini(attempt.correct_answer, prev_answer)
+                
+                # Store NLP component scores (for detailed breakdown)
                 attempt.keyword_score = nlp_results['keyword_score']
                 attempt.semantic_score = nlp_results['semantic_score']
                 attempt.grammar_score = nlp_results['grammar_score']
-                attempt.final_nlp_score = nlp_results['final_score']
-                attempt.nlp_feedback = nlp_results['feedback']
                 
-                # Set is_correct based on final NLP score (threshold: 60%)
-                attempt.is_correct = nlp_results['final_score'] >= 60
+                # Compare scores from both methods and use the maximum
+                nlp_score = nlp_results['final_score']
+                gemini_score = gemini_results['score']
+                max_score = max(nlp_score, gemini_score)
+                
+                # Use the feedback from the method that gave the higher score
+                # This ensures we use the most favorable evaluation
+                if gemini_score >= nlp_score:
+                    final_feedback = gemini_results['feedback']
+                else:
+                    final_feedback = nlp_results['feedback']
+                
+                # Store the maximum score as the final score
+                # This gives the candidate the benefit of the more lenient evaluation
+                attempt.final_nlp_score = max_score
+                attempt.nlp_feedback = final_feedback
+                
+                # Set is_correct based on maximum score (more lenient threshold: 45%)
+                # BUT: "I don't know" responses should NOT be marked as correct
+                # They get lenient feedback but are still considered incorrect
+                if is_honest_response:
+                    attempt.is_correct = False  # "I don't know" is not correct, but feedback is encouraging
+                else:
+                    attempt.is_correct = max_score >= 45  # Normal threshold for other answers
             else:
                 # Fallback to simple check if no model answer
                 attempt.is_correct = prev_answer.lower().strip() in attempt.correct_answer.lower() if attempt.correct_answer else None
@@ -787,12 +997,12 @@ def api_question():
 
     # Create or continue session robustly
     session_id = session.get('active_session_id')
-    interview_session = InterviewSession.query.get(session_id) if session_id else None
+    interview_session = db.session.get(InterviewSession, session_id) if session_id else None
     
     # If explicitly starting new session, clear any existing incomplete session
     if start_new:
         if interview_session and interview_session.completed_at is None:
-            interview_session.completed_at = datetime.utcnow()
+            interview_session.completed_at = datetime.now(timezone.utc)
             db.session.commit()
         interview_session = None
         if 'active_session_id' in session:
@@ -814,9 +1024,14 @@ def api_question():
             
             # If session exists but is old (more than 5 minutes), mark it as abandoned and start fresh
             if interview_session:
-                time_diff = (datetime.utcnow() - interview_session.started_at).total_seconds()
+                # Handle both naive and aware datetimes (for backward compatibility with old data)
+                started_at = interview_session.started_at
+                if started_at.tzinfo is None:
+                    # Convert naive datetime to UTC-aware
+                    started_at = started_at.replace(tzinfo=timezone.utc)
+                time_diff = (datetime.now(timezone.utc) - started_at).total_seconds()
                 if time_diff > 300:  # 5 minutes
-                    interview_session.completed_at = datetime.utcnow()
+                    interview_session.completed_at = datetime.now(timezone.utc)
                     db.session.commit()
                     interview_session = None
         
@@ -828,6 +1043,41 @@ def api_question():
             db.session.commit()
     
     session['active_session_id'] = interview_session.id
+
+    # Check if we've already answered all questions BEFORE creating a new one
+    # Count only answered questions (those with user_answer)
+    answered_count = QuestionAttempt.query.filter_by(session_id=interview_session.id).filter(QuestionAttempt.user_answer.isnot(None)).count()
+    
+    if answered_count >= interview_session.total_questions:
+        # All questions have been answered, mark as complete
+        interview_session.completed_at = datetime.now(timezone.utc)
+        # Create Interview record from session
+        correct_count = sum(1 for a in QuestionAttempt.query.filter_by(session_id=interview_session.id).all() if a.is_correct is True)
+        total = interview_session.total_questions
+        interview = Interview(
+            user_id=interview_session.user_id,
+            domain=interview_session.domain,
+            score=round((correct_count / max(1, total)) * 100, 1),
+            total_questions=total,
+            correct_answers=correct_count,
+            performance_summary=f"Completed {interview_session.domain} interview with {correct_count}/{total} correct answers."
+        )
+        db.session.add(interview)
+        # Clear active session id to avoid duplicate sessions on next start
+        if 'active_session_id' in session:
+            session.pop('active_session_id', None)
+        db.session.commit()
+        
+        # Return completion status (no new question)
+        return jsonify({
+            'questionId': None,
+            'question': None,
+            'progress': 1.0,
+            'total': interview_session.total_questions,
+            'index': interview_session.total_questions,
+            'completed': True,
+            'sessionId': interview_session.id,
+        })
 
     # Get list of already asked questions in this session to avoid duplicates
     existing_attempts = QuestionAttempt.query.filter_by(session_id=interview_session.id).all()
@@ -860,27 +1110,6 @@ def api_question():
     db.session.add(attempt)
     interview_session.current_index += 1
     
-    # Mark session as complete if reached total
-    completed = False
-    if interview_session.current_index >= interview_session.total_questions:
-        interview_session.completed_at = datetime.utcnow()
-        # Create Interview record from session
-        correct_count = sum(1 for a in QuestionAttempt.query.filter_by(session_id=interview_session.id).all() if a.is_correct is True)
-        total = interview_session.current_index
-        interview = Interview(
-            user_id=interview_session.user_id,
-            domain=interview_session.domain,
-            score=round((correct_count / max(1, total)) * 100, 1),
-            total_questions=total,
-            correct_answers=correct_count,
-            performance_summary=f"Completed {interview_session.domain} interview with {correct_count}/{total} correct answers."
-        )
-        db.session.add(interview)
-        completed = True
-        # Clear active session id to avoid duplicate sessions on next start
-        if 'active_session_id' in session:
-            session.pop('active_session_id', None)
-    
     db.session.commit()
 
     progress = min(interview_session.current_index / interview_session.total_questions, 1.0)
@@ -892,7 +1121,7 @@ def api_question():
         'progress': progress,
         'total': interview_session.total_questions,
         'index': display_index,  # This is already 1-based after increment
-        'completed': completed,
+        'completed': False,  # Not complete yet - user still needs to answer this question
         'sessionId': interview_session.id,
     })
 
@@ -914,62 +1143,207 @@ def api_transcribe():
 
 @app.route('/api/voice-analysis', methods=['POST'])
 def api_voice_analysis():
-    """Enhanced voice analysis with clarity, confidence, and tone feedback"""
+    """Enhanced voice analysis with clarity, confidence, and tone feedback based on entire interview"""
     if 'user_id' not in session:
         return jsonify({ 'error': 'unauthorized' }), 401
 
     # Get transcript and session data
     payload = request.get_json(silent=True) or {}
     transcript = payload.get('transcript', '').strip()
-    session_id = session.get('active_session_id')
+    session_id = payload.get('session_id') or session.get('active_session_id')
+    voice_used = payload.get('voice_used', True)  # Flag to indicate if voice was actually used
     
-    if not transcript or len(transcript) < 10:
-        return jsonify({ 'error': 'transcript_too_short', 'message': 'Transcript must be at least 10 characters' }), 400
-
-    # Analyze transcript characteristics for feedback
-    word_count = len(transcript.split())
-    avg_word_length = sum(len(w) for w in transcript.split()) / max(1, word_count)
-    has_pauses = '...' in transcript or 'um' in transcript.lower() or 'uh' in transcript.lower()
-    sentence_count = len([s for s in transcript.split('.') if s.strip()])
+    # Get all attempts from the session for comprehensive analysis
+    all_transcripts = []
+    all_questions = []
+    interview_performance = {'correct': 0, 'total': 0, 'avg_score': 0}
     
-    # Clarity analysis
-    clarity_score = 0.8
-    clarity_feedback = "Your speech was clear and articulate."
-    if has_pauses:
-        clarity_score -= 0.2
-        clarity_feedback = "Your speech was generally clear, but try to reduce pauses and speak more fluidly."
-    if avg_word_length < 3:
-        clarity_score -= 0.1
-        clarity_feedback = "Consider speaking more clearly and using complete words."
-    if clarity_score < 0.6:
-        clarity_feedback = "Try to improve clarity by reducing filler words and speaking at a steady pace."
-    
-    # Confidence analysis (based on transcript characteristics)
-    confidence_score = 0.75
-    confidence_feedback = "You sounded confident and assertive."
-    if word_count < 20:
-        confidence_score -= 0.15
-        confidence_feedback = "Consider providing more detailed answers to demonstrate confidence."
-    if 'maybe' in transcript.lower() or 'i think' in transcript.lower():
-        confidence_score -= 0.1
-        confidence_feedback = "Try to project more confidence by avoiding hedging language."
-    if confidence_score < 0.6:
-        confidence_feedback = "Consider speaking more assertively and avoiding uncertain language."
-    
-    # Tone analysis
-    tone_score = 0.8
-    tone_feedback = "Your tone was friendly and professional."
-    if '!' in transcript:
-        tone_score += 0.05
-    if any(word in transcript.lower() for word in ['sorry', 'apologize', 'excuse']):
-        tone_score -= 0.1
-        tone_feedback = "Your tone was professional, but avoid over-apologizing."
-    if tone_score < 0.7:
-        tone_feedback = "Try to sound more engaged and maintain a professional yet friendly tone."
-    
-    # Store analysis if session exists
     if session_id:
-        interview_session = InterviewSession.query.get(session_id)
+        interview_session = db.session.get(InterviewSession, session_id)
+        if interview_session:
+            attempts = QuestionAttempt.query.filter_by(session_id=session_id).order_by(QuestionAttempt.created_at.asc()).all()
+            for attempt in attempts:
+                if attempt.user_answer:
+                    all_transcripts.append(attempt.user_answer)
+                    all_questions.append({
+                        'question': attempt.question_text,
+                        'answer': attempt.user_answer,
+                        'correct': attempt.is_correct,
+                        'score': attempt.final_nlp_score
+                    })
+                    interview_performance['total'] += 1
+                    if attempt.is_correct:
+                        interview_performance['correct'] += 1
+                    if attempt.final_nlp_score is not None:
+                        interview_performance['avg_score'] += attempt.final_nlp_score
+            
+            if interview_performance['total'] > 0:
+                interview_performance['avg_score'] = interview_performance['avg_score'] / interview_performance['total']
+                interview_performance['accuracy'] = (interview_performance['correct'] / interview_performance['total']) * 100
+    
+    # Use all transcripts for analysis, or just the current one if no session
+    combined_transcript = ' '.join(all_transcripts) if all_transcripts else transcript
+    
+    # Detect if voice was actually used (check for typed vs spoken characteristics)
+    # Typed text usually has: proper capitalization, punctuation, no filler words, consistent spacing
+    # Spoken text usually has: filler words (um, uh), inconsistent capitalization, fewer punctuation marks
+    is_typed_text = False
+    if combined_transcript:
+        # Check for characteristics of typed text
+        has_proper_caps = any(c.isupper() for c in combined_transcript if c.isalpha())
+        has_punctuation = any(c in '.,!?;:' for c in combined_transcript)
+        has_filler_words = any(word in combined_transcript.lower() for word in ['um', 'uh', 'er', 'ah'])
+        word_count = len(combined_transcript.split())
+        
+        # If text has proper formatting but no filler words, likely typed
+        if (has_proper_caps or has_punctuation) and not has_filler_words and word_count > 5:
+            is_typed_text = True
+    
+    # If voice_used flag is False or we detect typed text, adjust feedback
+    if not voice_used or is_typed_text:
+        clarity_feedback = "Voice analysis is not applicable as answers were typed rather than spoken. Consider using voice input for a more natural interview experience."
+        confidence_feedback = "Voice analysis is not applicable as answers were typed rather than spoken."
+        tone_feedback = "Voice analysis is not applicable as answers were typed rather than spoken."
+        clarity_score = 0
+        confidence_score = 0
+        tone_score = 0
+    else:
+        if not combined_transcript or len(combined_transcript) < 10:
+            return jsonify({ 'error': 'transcript_too_short', 'message': 'Transcript must be at least 10 characters' }), 400
+
+        # Analyze transcript characteristics for feedback
+        word_count = len(combined_transcript.split())
+        avg_word_length = sum(len(w) for w in combined_transcript.split()) / max(1, word_count)
+        has_pauses = '...' in combined_transcript or 'um' in combined_transcript.lower() or 'uh' in combined_transcript.lower()
+        sentence_count = len([s for s in combined_transcript.split('.') if s.strip()])
+        avg_answer_length = word_count / max(1, len(all_transcripts)) if all_transcripts else word_count
+        
+        # Clarity analysis - dynamic based on interview performance
+        clarity_score = 0.8
+        if has_pauses:
+            clarity_score -= 0.2
+        if avg_word_length < 3:
+            clarity_score -= 0.1
+        if avg_answer_length < 15:
+            clarity_score -= 0.1
+        
+        # Dynamic clarity feedback based on performance
+        if interview_performance.get('avg_score', 0) >= 70:
+            clarity_feedback = "Your speech was clear and articulate throughout the interview."
+        elif interview_performance.get('avg_score', 0) >= 50:
+            clarity_feedback = "Your speech was generally clear, but try to reduce pauses and speak more fluidly."
+        elif has_pauses:
+            clarity_feedback = "Try to improve clarity by reducing filler words and speaking at a steady pace."
+        else:
+            clarity_feedback = "Consider speaking more clearly and using complete words."
+        
+        # Confidence analysis - dynamic based on interview performance
+        confidence_score = 0.75
+        if avg_answer_length < 20:
+            confidence_score -= 0.15
+        if 'maybe' in combined_transcript.lower() or 'i think' in combined_transcript.lower():
+            confidence_score -= 0.1
+        if 'i don\'t know' in combined_transcript.lower() or 'not sure' in combined_transcript.lower():
+            confidence_score -= 0.1
+        
+        # Dynamic confidence feedback based on performance
+        if interview_performance.get('accuracy', 0) >= 80:
+            confidence_feedback = "You demonstrated strong confidence and knowledge throughout the interview."
+        elif interview_performance.get('accuracy', 0) >= 60:
+            confidence_feedback = "You sounded confident in most answers. Keep building on this foundation."
+        elif avg_answer_length < 20:
+            confidence_feedback = "Consider providing more detailed answers to demonstrate confidence."
+        elif 'maybe' in combined_transcript.lower() or 'i think' in combined_transcript.lower():
+            confidence_feedback = "Try to project more confidence by avoiding hedging language."
+        else:
+            confidence_feedback = "Consider speaking more assertively and avoiding uncertain language."
+        
+        # Tone analysis - dynamic based on interview performance
+        tone_score = 0.8
+        if '!' in combined_transcript:
+            tone_score += 0.05
+        if any(word in combined_transcript.lower() for word in ['sorry', 'apologize', 'excuse']):
+            tone_score -= 0.1
+        
+        # Dynamic tone feedback based on performance
+        if interview_performance.get('avg_score', 0) >= 70:
+            tone_feedback = "Your tone was friendly and professional throughout the interview."
+        elif any(word in combined_transcript.lower() for word in ['sorry', 'apologize', 'excuse']):
+            tone_feedback = "Your tone was professional, but avoid over-apologizing."
+        elif tone_score < 0.7:
+            tone_feedback = "Try to sound more engaged and maintain a professional yet friendly tone."
+        else:
+            tone_feedback = "Your tone was appropriate and professional."
+    
+    # Generate overall interview feedback using Gemini
+    overall_feedback = ""
+    if session_id and all_questions:
+        client = _configure_gemini()
+        if client:
+            try:
+                # Prepare interview summary for Gemini
+                questions_summary = "\n".join([
+                    f"Q{i+1}: {q['question']}\nA{i+1}: {q['answer']}\nScore: {q['score']:.1f}% ({'Correct' if q['correct'] else 'Incorrect'})\n"
+                    for i, q in enumerate(all_questions)
+                ])
+                
+                prompt = f"""You are an expert technical interviewer providing overall feedback on a completed interview.
+
+Interview Performance Summary:
+- Total Questions: {interview_performance['total']}
+- Correct Answers: {interview_performance['correct']}
+- Accuracy: {interview_performance.get('accuracy', 0):.1f}%
+- Average Score: {interview_performance.get('avg_score', 0):.1f}%
+
+Questions and Answers:
+{questions_summary}
+
+Provide constructive overall feedback (2-3 sentences) that:
+1. Acknowledges strengths shown in the interview
+2. Identifies areas for improvement
+3. Offers encouragement and next steps
+
+Be encouraging but honest. Focus on learning and growth.
+
+Return ONLY a JSON object with this format:
+{{
+    "overall_feedback": "<your feedback message here>"
+}}
+
+IMPORTANT: Return ONLY valid JSON. No markdown, no code blocks."""
+                
+                import json as _json
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                generation_config = {
+                    'temperature': 0.5,
+                    'max_output_tokens': 300,
+                }
+                resp = model.generate_content(prompt, generation_config=generation_config)
+                text = resp.text.strip()
+                
+                # Remove markdown code blocks if present
+                if '```json' in text:
+                    text = text.split('```json')[1].split('```')[0].strip()
+                elif '```' in text:
+                    text = text.split('```')[1].split('```')[0].strip()
+                
+                # Extract JSON
+                if '{' in text and '}' in text:
+                    json_str = text[text.find('{'):text.rfind('}')+1]
+                    data = _json.loads(json_str)
+                    overall_feedback = data.get('overall_feedback', '')
+            except Exception as e:
+                # Fallback feedback if Gemini fails
+                if interview_performance.get('accuracy', 0) >= 80:
+                    overall_feedback = "Excellent performance! You demonstrated strong understanding of the concepts. Keep practicing to maintain this level."
+                elif interview_performance.get('accuracy', 0) >= 60:
+                    overall_feedback = "Good work! You showed solid knowledge in most areas. Review the topics you struggled with to strengthen your skills."
+                else:
+                    overall_feedback = "You've completed the interview. Review the questions and answers to identify areas for improvement. Keep learning and practicing!"
+    
+    # Store analysis if session exists (store on last attempt)
+    if session_id:
+        interview_session = db.session.get(InterviewSession, session_id)
         if interview_session:
             latest_attempt = QuestionAttempt.query.filter_by(session_id=session_id).order_by(QuestionAttempt.created_at.desc()).first()
             if latest_attempt:
@@ -984,7 +1358,8 @@ def api_voice_analysis():
         'tone': tone_feedback,
         'clarity_score': round(clarity_score * 100, 1),
         'confidence_score': round(confidence_score * 100, 1),
-        'tone_score': round(tone_score * 100, 1)
+        'tone_score': round(tone_score * 100, 1),
+        'overall_feedback': overall_feedback
     })
 
 
@@ -996,7 +1371,7 @@ def generate_report():
         return redirect(url_for('signin'))
 
     user_id = session['user_id']
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         flash('User not found', 'error')
         return redirect(url_for('dashboard'))
@@ -1033,7 +1408,7 @@ def generate_report():
     p.setFont('Helvetica', 12)
     p.drawString(72, y, f'Name: {user.name}  |  Email: {user.email}')
     y -= 18
-    p.drawString(72, y, f'Generated: {datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")}')
+    p.drawString(72, y, f'Generated: {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")}')
     y -= 30
 
     if not interviews_data or (not session_id and not interviews_data[0][0]):
@@ -1121,7 +1496,7 @@ def settings():
         return redirect(url_for('signin'))
 
     user_id = session['user_id']
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         session.clear()
         flash('User not found. Please sign in again.', 'error')
@@ -1137,7 +1512,7 @@ def settings():
     if request.method == 'POST':
         email_notifications = request.form.get('email_notifications') == 'on'
         user_settings.email_notifications = email_notifications
-        user_settings.updated_at = datetime.utcnow()
+        user_settings.updated_at = datetime.now(timezone.utc)
         db.session.commit()
         flash('Settings updated successfully', 'success')
         return redirect(url_for('settings'))
@@ -1157,14 +1532,15 @@ def interview_history():
     user_id = session['user_id']
     sessions = InterviewSession.query.filter_by(user_id=user_id).order_by(InterviewSession.started_at.desc()).all()
     
-    # Enrich with attempt counts and completion status
+    # Enrich with attempt counts, completion status, and attempts data
     sessions_data = []
     for sess in sessions:
-        attempts = QuestionAttempt.query.filter_by(session_id=sess.id).all()
+        attempts = QuestionAttempt.query.filter_by(session_id=sess.id).order_by(QuestionAttempt.created_at.asc()).all()
         correct_count = sum(1 for a in attempts if a.is_correct is True)
         video = InterviewVideo.query.filter_by(session_id=sess.id, user_id=user_id).first()
         sessions_data.append({
             'session': sess,
+            'attempts': attempts,  # Include attempts for display
             'total_attempts': len(attempts),
             'correct_answers': correct_count,
             'has_voice_analysis': any(a.voice_clarity_score is not None for a in attempts),
@@ -1486,7 +1862,7 @@ def upload_video():
     
     # Generate secure filename
     user_id = session['user_id']
-    timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
     original_filename = secure_filename(video_file.filename)
     file_ext = os.path.splitext(original_filename)[1] or '.webm'
     filename = f"user_{user_id}_session_{session_id or 'new'}_{timestamp}{file_ext}"
@@ -1593,7 +1969,7 @@ def analyze_emotion():
     else:
         # Save uploaded file temporarily
         temp_filename = secure_filename(video_file.filename)
-        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], f"temp_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{temp_filename}")
+        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], f"temp_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{temp_filename}")
         video_file.save(temp_path)
         video_path = temp_path
     
@@ -1716,7 +2092,7 @@ def interview_replay(session_id):
         emotion_analysis = EmotionAnalysis.query.filter_by(video_id=video.id).first()
     
     return render_template('interview_replay.html',
-                          session=interview_session,
+                          interview_session=interview_session,
                           attempts=attempts,
                           video=video,
                           emotion_analysis=emotion_analysis,
