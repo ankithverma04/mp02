@@ -1567,7 +1567,11 @@ def analyze_video_emotions_deepface(video_path, sample_interval=2.0):
         import cv2
         from deepface import DeepFace
         import numpy as np
-        
+    except (ImportError, AttributeError) as e:
+        print(f"Video analysis dependencies not available: {e}")
+        return None
+    
+    try:
         # Open video file
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
@@ -1746,7 +1750,11 @@ def analyze_video_emotions(video_path):
     try:
         import cv2
         import numpy as np
-        
+    except (ImportError, AttributeError) as e:
+        print(f"OpenCV/NumPy not available: {e}")
+        return None
+    
+    try:
         # Try to load face cascade (basic face detection)
         cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
         face_cascade = cv2.CascadeClassifier(cascade_path)
@@ -1892,7 +1900,12 @@ def upload_video():
     # Run analysis in background to avoid blocking the response
     try:
         # Try DeepFace analysis first
-        analysis_result = analyze_video_emotions_deepface(filepath, sample_interval=2.0)
+        analysis_result = None
+        try:
+            analysis_result = analyze_video_emotions_deepface(filepath, sample_interval=2.0)
+        except (ImportError, AttributeError) as e:
+            print(f"DeepFace analysis not available: {e}")
+            analysis_result = None
         
         if analysis_result and analysis_result.get('status') == 'success':
             # Store in EmotionAnalysis table
@@ -1929,7 +1942,13 @@ def upload_video():
             })
         else:
             # Fallback to basic OpenCV analysis if DeepFace fails
-            basic_analysis = analyze_video_emotions(filepath)
+            basic_analysis = None
+            try:
+                basic_analysis = analyze_video_emotions(filepath)
+            except (ImportError, AttributeError) as e:
+                print(f"Basic video analysis not available: {e}")
+                basic_analysis = None
+            
             if basic_analysis:
                 video_record.emotion_analysis = json.dumps(basic_analysis)
                 video_record.engagement_score = basic_analysis.get('engagement_score')
